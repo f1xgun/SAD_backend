@@ -1,9 +1,10 @@
 package auth
 
 import (
+	userModels "sad/internal/models/user"
+
 	"sad/internal/models/auth"
-	"sad/internal/repository"
-	userRepoModel "sad/internal/repository/models/user"
+	"sad/internal/repositories"
 	"sad/internal/utils"
 
 	"github.com/google/uuid"
@@ -12,34 +13,34 @@ import (
 )
 
 type service struct {
-	authRepository repository.AuthRepository
+	authRepository repositories.AuthRepository
 }
 
-func NewService(authRepository repository.AuthRepository) *service {
+func NewService(authRepository repositories.AuthRepository) *service {
 	return &service{
 		authRepository: authRepository,
 	}
 }
 
-func (s *service) Login(c *fiber.Ctx, user *auth.UserLoginRequest) (string, error) {
-	userRepo, err := s.authRepository.GetByLogin(c, user.Login)
+func (s *service) Login(c *fiber.Ctx, user userModels.UserCredentials) (string, error) {
+	existedUser, err := s.authRepository.GetByLogin(c, user.Login)
 
 	if err != nil {
 		return "", err
 	}
 
-	if userRepo == nil {
+	if existedUser == nil {
 		return "", &fiber.Error{Code: 404, Message: "User with this login does not exist"}
 	}
 
-	if !utils.CompareHashPassword(user.Password, userRepo.Password) {
+	if !utils.CompareHashPassword(user.Password, existedUser.Password) {
 		return "", &fiber.Error{Code: 401, Message: "Invalid credentials"}
 	}
 
 	return "some token", nil
 }
 
-func (s *service) Register(c *fiber.Ctx, user *auth.UserRegistrationRequest) (string, error) {
+func (s *service) Register(c *fiber.Ctx, user auth.UserRegistrationRequest) (string, error) {
 	existedUser, err := s.authRepository.GetByLogin(c, user.Login)
 
 	if err != nil {
@@ -56,7 +57,7 @@ func (s *service) Register(c *fiber.Ctx, user *auth.UserRegistrationRequest) (st
 		return "", &fiber.Error{Code: 500, Message: err.Error()}
 	}
 
-	newUser := &userRepoModel.User{
+	newUser := userModels.User{
 		UUID:     uuid.New().String(),
 		Name:     user.Name,
 		Login:    user.Login,

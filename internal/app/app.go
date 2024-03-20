@@ -35,6 +35,7 @@ func (a *App) setupRouter() *fiber.App {
 	return r
 }
 
-func (a *App) Run() {
-	a.router.Listen(":8080")
+func (a *App) Run() error {
+	err := a.router.Listen(":8080")
+	return err
 }
