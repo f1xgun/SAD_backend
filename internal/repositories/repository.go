@@ -7,7 +7,7 @@ import (
 )
 
 type AuthRepository interface {
-	GetByUUID(c *fiber.Ctx, userUUID string) (*userModels.UserCredentials, error)
-	GetByLogin(c *fiber.Ctx, login string) (*userModels.UserCredentials, error)
+	GetByUUID(c *fiber.Ctx, userUUID string) (*userModels.UserRepoModel, error)
+	GetByLogin(c *fiber.Ctx, login string) (*userModels.UserRepoModel, error)
 	Create(c *fiber.Ctx, user userModels.User) error
 }

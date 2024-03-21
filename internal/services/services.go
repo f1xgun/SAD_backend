@@ -1,7 +1,7 @@
 package services
 
 import (
-	"sad/internal/models/auth"
+	authModels "sad/internal/models/auth"
 
 	userModels "sad/internal/models/user"
 
@@ -10,5 +10,5 @@ import (
 
 type AuthService interface {
 	Login(c *fiber.Ctx, user userModels.UserCredentials) (string, error)
-	Register(c *fiber.Ctx, user auth.UserRegistrationRequest) (string, error)
+	Register(c *fiber.Ctx, user authModels.UserRegistrationRequest) (string, error)
 }

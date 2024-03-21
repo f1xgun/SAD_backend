@@ -22,7 +22,7 @@ func NewRepository() *repository {
 	}
 }
 
-func (r *repository) GetByUUID(c *fiber.Ctx, userUUID string) (*userModels.UserCredentials, error) {
+func (r *repository) GetByUUID(c *fiber.Ctx, userUUID string) (*userModels.UserRepoModel, error) {
 	r.m.RLock()
 	defer r.m.RUnlock()
 
@@ -31,7 +31,8 @@ func (r *repository) GetByUUID(c *fiber.Ctx, userUUID string) (*userModels.UserC
 		return nil, nil
 	}
 
-	userCredentials := &userModels.UserCredentials{
+	userCredentials := &userModels.UserRepoModel{
+		UUID:     user.UUID,
 		Login:    user.Login,
 		Password: user.Password,
 	}
@@ -39,7 +40,7 @@ func (r *repository) GetByUUID(c *fiber.Ctx, userUUID string) (*userModels.UserC
 	return userCredentials, nil
 }
 
-func (r *repository) GetByLogin(c *fiber.Ctx, login string) (*userModels.UserCredentials, error) {
+func (r *repository) GetByLogin(c *fiber.Ctx, login string) (*userModels.UserRepoModel, error) {
 	r.m.RLock()
 	defer r.m.RUnlock()
 
@@ -51,7 +52,12 @@ func (r *repository) GetByLogin(c *fiber.Ctx, login string) (*userModels.UserCre
 		}
 	}
 
-	userCredentials := &userModels.UserCredentials{
+	if user == nil {
+		return nil, nil
+	}
+
+	userCredentials := &userModels.UserRepoModel{
+		UUID:     user.UUID,
 		Login:    user.Login,
 		Password: user.Password,
 	}

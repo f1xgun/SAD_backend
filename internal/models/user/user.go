@@ -12,3 +12,9 @@ type User struct {
 	Password string
 	Role     string
 }
+
+type UserRepoModel struct {
+	UUID     string
+	Login    string
+	Password string
+}
