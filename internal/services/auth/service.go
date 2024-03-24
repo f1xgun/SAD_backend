@@ -20,18 +20,18 @@ import (
 )
 
 type service struct {
-	authRepository repositories.AuthRepository
+	userRepository repositories.UserRepository
 }
 
-func NewService(authRepository repositories.AuthRepository) *service {
+func NewService(userRepository repositories.UserRepository) *service {
 	return &service{
-		authRepository: authRepository,
+		userRepository: userRepository,
 	}
 }
 
 func (s *service) Login(c *fiber.Ctx, user userModels.UserCredentials) (string, error) {
 	log.Printf("Attempting login for user: %s", user.Login)
-	existedUser, err := s.authRepository.GetByLogin(c, user.Login)
+	existedUser, err := s.userRepository.GetByLogin(c, user.Login)
 
 	if err != nil {
 		log.Printf("Repo get user by login error: %s", err.Error())
@@ -93,7 +93,7 @@ func (s *service) Register(c *fiber.Ctx, user authModels.UserRegistrationRequest
 		Role:     userModels.Student,
 	}
 
-	if err := s.authRepository.Create(c, newUser); err != nil {
+	if err := s.userRepository.Create(c, newUser); err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); ok {
 			switch pgErr.Code {
 			case errorsModels.NeedUniqueValueErrCode:

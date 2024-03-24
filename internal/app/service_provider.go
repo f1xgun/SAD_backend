@@ -4,10 +4,12 @@ import (
 	"sad/internal/config"
 	database "sad/internal/db"
 	"sad/internal/handlers/auth"
+	"sad/internal/handlers/user"
 	"sad/internal/repositories"
-	authRepository "sad/internal/repositories/auth"
+	userRepository "sad/internal/repositories/user"
 	"sad/internal/services"
 	authService "sad/internal/services/auth"
+	userService "sad/internal/services/user"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -15,9 +17,13 @@ import (
 type serviceProvider struct {
 	authService services.AuthService
 
-	authRepository repositories.AuthRepository
+	userService services.UserService
+
+	userRepository repositories.UserRepository
 
 	authHandler auth.AuthHandler
+
+	userHandler user.UserHandler
 
 	db *pgx.Conn
 }
@@ -34,20 +40,28 @@ func newServiceProvider(config config.Config) (*serviceProvider, error) {
 	}, nil
 }
 
-func (s *serviceProvider) AuthRepository() repositories.AuthRepository {
-	if s.authRepository == nil {
-		s.authRepository = authRepository.NewRepository(s.db)
+func (s *serviceProvider) UserRepository() repositories.UserRepository {
+	if s.userRepository == nil {
+		s.userRepository = userRepository.NewRepository(s.db)
 	}
 
-	return s.authRepository
+	return s.userRepository
 }
 
 func (s *serviceProvider) AuthService() services.AuthService {
 	if s.authService == nil {
-		s.authService = authService.NewService(s.AuthRepository())
+		s.authService = authService.NewService(s.UserRepository())
 	}
 
 	return s.authService
+}
+
+func (s *serviceProvider) UserService() services.UserService {
+	if s.userService == nil {
+		s.userService = userService.NewService(s.UserRepository())
+	}
+
+	return s.userService
 }
 
 func (s *serviceProvider) AuthHandler() auth.AuthHandler {
@@ -56,4 +70,12 @@ func (s *serviceProvider) AuthHandler() auth.AuthHandler {
 	}
 
 	return s.authHandler
+}
+
+func (s *serviceProvider) UserHandler() user.UserHandler {
+	if s.userHandler == nil {
+		s.userHandler = user.NewUserHandler(s.UserService())
+	}
+
+	return s.userHandler
 }

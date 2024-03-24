@@ -5,7 +5,8 @@ import (
 	"log"
 	"sad/internal/config"
 	middleware "sad/internal/middlewares/auth"
-	routes "sad/internal/routes/auth"
+	"sad/internal/routes/auth"
+	"sad/internal/routes/user"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -62,7 +63,11 @@ func (a *App) setupRouter(config config.Config) *fiber.App {
 
 	authHandler := a.serviceProvider.AuthHandler()
 
-	routes.AuthRoutes(r, authHandler)
+	auth.AuthRoutes(r, authHandler)
+
+	userHandler := a.serviceProvider.UserHandler()
+
+	user.UserRoutes(r, userHandler, middleware.AuthMiddleware(config))
 
 	api := r.Group("/api").Use(middleware.AuthMiddleware(config))
 

@@ -1,4 +1,4 @@
-package routes
+package auth
 
 import (
 	"sad/internal/handlers/auth"

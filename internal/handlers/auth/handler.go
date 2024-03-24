@@ -29,7 +29,7 @@ func (h *authHandler) Login(c *fiber.Ctx) error {
 	var user userModels.UserCredentials
 
 	if err := c.BodyParser(&user); err != nil {
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		return c.Status(http.StatusBadRequest).JSON(&fiber.Map{"error": "invalid request body"})
 	}
 
 	token, err := h.authService.Login(c, user)
@@ -53,17 +53,17 @@ func (h *authHandler) Login(c *fiber.Ctx) error {
 			errMsg = "An unexpected error occurred"
 		}
 
-		return c.Status(statusCode).JSON(fiber.Map{"error": errMsg})
+		return c.Status(statusCode).JSON(&fiber.Map{"error": errMsg})
 	}
 
-	return c.Status(http.StatusOK).JSON(fiber.Map{"token": token})
+	return c.Status(http.StatusOK).JSON(&fiber.Map{"token": token})
 }
 
 func (h *authHandler) Register(c *fiber.Ctx) error {
 	var user authModels.UserRegistrationRequest
 
 	if err := c.BodyParser(&user); err != nil {
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		return c.Status(http.StatusBadRequest).JSON(&fiber.Map{"error": "invalid request body"})
 	}
 
 	uuid, err := h.authService.Register(c, user)
@@ -83,8 +83,8 @@ func (h *authHandler) Register(c *fiber.Ctx) error {
 			statusCode = http.StatusInternalServerError
 			errMsg = err.Error()
 		}
-		return c.Status(statusCode).JSON(fiber.Map{"error": errMsg})
+		return c.Status(statusCode).JSON(&fiber.Map{"error": errMsg})
 	}
 
-	return c.Status(http.StatusOK).JSON(fiber.Map{"uuid": uuid})
+	return c.Status(http.StatusOK).JSON(&fiber.Map{"uuid": uuid})
 }
