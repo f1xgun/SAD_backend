@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"log"
 	"sad/internal/config"
 	middleware "sad/internal/middlewares/auth"
@@ -33,17 +34,30 @@ func NewApp() (*App, error) {
 }
 
 func (a *App) initDeps(config config.Config) {
-	a.serviceProvider = newServiceProvider()
+	serviceProvider, err := newServiceProvider(config)
+
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %s", err.Error())
+		return
+	}
+
+	a.serviceProvider = serviceProvider
 	a.router = a.setupRouter(config)
 }
 
 func (a *App) setupRouter(config config.Config) *fiber.App {
 	r := fiber.New()
 
-	r.Use(recover.New())
+	r.Use(recover.New(recover.Config{
+		EnableStackTrace: true,
+		StackTraceHandler: func(c *fiber.Ctx, e interface{}) {
+			log.Printf("Unhandled error occurred: %v", e)
+			c.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
+		},
+	}))
 	r.Use(requestid.New())
 	r.Use(logger.New(logger.Config{
-		Format: "${pid} ${locals:requestid} ${status} - ${method} ${path}​\n",
+		Format: "${pid} ${locals:requestid} ${status} - ${method} ${path}\n",
 	}))
 
 	authHandler := a.serviceProvider.AuthHandler()
@@ -64,5 +78,10 @@ func (a *App) setupRouter(config config.Config) *fiber.App {
 
 func (a *App) Run() error {
 	err := a.router.Listen(":8080")
+	return err
+}
+
+func (a *App) CloseDBConnection() error {
+	err := a.serviceProvider.db.Close(context.Background())
 	return err
 }

@@ -1,11 +1,15 @@
 package app
 
 import (
+	"sad/internal/config"
+	database "sad/internal/db"
 	"sad/internal/handlers/auth"
 	"sad/internal/repositories"
 	authRepository "sad/internal/repositories/auth"
 	"sad/internal/services"
 	authService "sad/internal/services/auth"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type serviceProvider struct {
@@ -14,15 +18,25 @@ type serviceProvider struct {
 	authRepository repositories.AuthRepository
 
 	authHandler auth.AuthHandler
+
+	db *pgx.Conn
 }
 
-func newServiceProvider() *serviceProvider {
-	return &serviceProvider{}
+func newServiceProvider(config config.Config) (*serviceProvider, error) {
+	db, err := database.NewDBConnection(config)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &serviceProvider{
+		db: db,
+	}, nil
 }
 
 func (s *serviceProvider) AuthRepository() repositories.AuthRepository {
 	if s.authRepository == nil {
-		s.authRepository = authRepository.NewRepository()
+		s.authRepository = authRepository.NewRepository(s.db)
 	}
 
 	return s.authRepository

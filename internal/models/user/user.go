@@ -10,7 +10,7 @@ type User struct {
 	Name     string
 	Login    string
 	Password string
-	Role     string
+	Role     UserRole
 }
 
 type UserRepoModel struct {
@@ -18,3 +18,11 @@ type UserRepoModel struct {
 	Login    string
 	Password string
 }
+
+type UserRole string
+
+const (
+	Student UserRole = "student"
+	Teacher UserRole = "teacher"
+	Admin   UserRole = "admin"
+)

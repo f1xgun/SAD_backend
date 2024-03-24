@@ -15,4 +15,6 @@ func main() {
 	if err := app.Run(); err != nil {
 		log.Fatalf("Failed to run app: %s", err.Error())
 	}
+
+	defer app.CloseDBConnection()
 }

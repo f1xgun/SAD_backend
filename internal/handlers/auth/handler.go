@@ -3,7 +3,7 @@ package auth
 import (
 	"net/http"
 	authModels "sad/internal/models/auth"
-	"sad/internal/models/errors"
+	errorsModels "sad/internal/models/errors"
 	userModels "sad/internal/models/user"
 	"sad/internal/services"
 
@@ -39,13 +39,13 @@ func (h *authHandler) Login(c *fiber.Ctx) error {
 		var errMsg string
 
 		switch err {
-		case errors.ErrUserNotFound:
+		case errorsModels.ErrUserNotFound:
 			statusCode = http.StatusNotFound
 			errMsg = "User with this login does not exist"
-		case errors.ErrInvalidCredentials:
+		case errorsModels.ErrInvalidCredentials:
 			statusCode = http.StatusUnauthorized
 			errMsg = "Invalid credentials"
-		case errors.ErrServer:
+		case errorsModels.ErrServer:
 			statusCode = http.StatusInternalServerError
 			errMsg = "Server error"
 		default:
@@ -73,15 +73,15 @@ func (h *authHandler) Register(c *fiber.Ctx) error {
 		var errMsg string
 
 		switch err {
-		case errors.ErrUserExists:
+		case errorsModels.ErrUserExists:
 			statusCode = http.StatusConflict
 			errMsg = "User with this login already exist"
-		case errors.ErrServer:
+		case errorsModels.ErrServer:
 			statusCode = http.StatusInternalServerError
 			errMsg = "Server error"
 		default:
 			statusCode = http.StatusInternalServerError
-			errMsg = "An unexpected error occurred"
+			errMsg = err.Error()
 		}
 		return c.Status(statusCode).JSON(fiber.Map{"error": errMsg})
 	}
