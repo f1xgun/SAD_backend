@@ -4,7 +4,7 @@ import (
 	"net/http"
 	authModels "sad/internal/models/auth"
 	errorsModels "sad/internal/models/errors"
-	userModels "sad/internal/models/user"
+	usersModels "sad/internal/models/user"
 	"sad/internal/services"
 
 	"github.com/gofiber/fiber/v2"
@@ -26,7 +26,7 @@ func NewAuthHandler(authService services.AuthService) AuthHandler {
 }
 
 func (h *authHandler) Login(c *fiber.Ctx) error {
-	var user userModels.UserCredentials
+	var user usersModels.UserCredentials
 
 	if err := c.BodyParser(&user); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(&fiber.Map{"error": "invalid request body"})

@@ -7,6 +7,6 @@ import (
 )
 
 func AuthRoutes(r *fiber.App, handler auth.AuthHandler) {
-	r.Post("/login", handler.Login)
-	r.Post("/register", handler.Register)
+	r.Post("/api/login", handler.Login)
+	r.Post("/api/register", handler.Register)
 }

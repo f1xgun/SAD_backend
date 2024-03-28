@@ -1,10 +1,10 @@
-package user
+package users
 
 import (
 	"log"
 	"net/http"
 	errorsModels "sad/internal/models/errors"
-	userModels "sad/internal/models/user"
+	usersModels "sad/internal/models/user"
 	"sad/internal/services"
 
 	"github.com/gofiber/fiber/v2"
@@ -25,9 +25,9 @@ func NewUserHandler(userService services.UserService) UserHandler {
 }
 
 func (h *userHandler) EditRole(c *fiber.Ctx) error {
-	userID := c.Query("userId")
+	userID := c.Params("userId")
 
-	var user userModels.UserCredentials
+	var user usersModels.UserCredentials
 	if err := c.BodyParser(&user); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(&fiber.Map{"error": "invalid request body"})
 	}

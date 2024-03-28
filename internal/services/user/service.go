@@ -1,9 +1,9 @@
-package user
+package users
 
 import (
 	"log"
 	errorsModels "sad/internal/models/errors"
-	userModels "sad/internal/models/user"
+	usersModels "sad/internal/models/user"
 	"sad/internal/repositories"
 
 	"github.com/gofiber/fiber/v2"
@@ -19,7 +19,7 @@ func NewService(userRepository repositories.UserRepository) *service {
 	}
 }
 
-func (s *service) EditRole(c *fiber.Ctx, userId string, newRole userModels.UserRole) error {
+func (s *service) EditRole(c *fiber.Ctx, userId string, newRole usersModels.UserRole) error {
 	adminID, ok := c.Locals("userID").(string)
 	if !ok {
 		log.Println("Failed to assert type for userID from Locals")
@@ -30,17 +30,6 @@ func (s *service) EditRole(c *fiber.Ctx, userId string, newRole userModels.UserR
 	if adminID == userId {
 		log.Printf("Admin with ID %s attempted to change their own role", adminID)
 		return errorsModels.ErrChangeOwnRole
-	}
-
-	admin, err := s.userRepository.GetByUUID(c, adminID)
-	if err != nil {
-		log.Printf("Error fetching admin data: %v", err)
-		return err
-	}
-
-	if admin.Role != userModels.Admin {
-		log.Printf("User with ID %s has no permissions to change roles", adminID)
-		return errorsModels.ErrNoPermission
 	}
 
 	exists, err := s.userRepository.CheckUserExists(c, userId)
@@ -62,4 +51,20 @@ func (s *service) EditRole(c *fiber.Ctx, userId string, newRole userModels.UserR
 	}
 
 	return err
+}
+
+func (s *service) CheckUserIsAdmin(c *fiber.Ctx) (bool, error) {
+	adminID, ok := c.Locals("userID").(string)
+	if !ok {
+		log.Println("Failed to assert type for userID from Locals")
+		return false, errorsModels.ErrServer
+	}
+
+	admin, err := s.userRepository.GetById(c, adminID)
+	if err != nil {
+		log.Printf("Error fetching admin data: %v", err)
+		return false, err
+	}
+
+	return admin.Role == usersModels.Admin, nil
 }

@@ -1,12 +1,13 @@
-package user
+package users
 
 import (
-	"sad/internal/handlers/user"
+	users "sad/internal/handlers/user"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-func UserRoutes(r *fiber.App, handler user.UserHandler, middlewares ...interface{}) {
-	api := r.Group("/user").Use(middlewares...)
-	api.Patch("/role", handler.EditRole)
+func UserRoutes(r *fiber.App, handler users.UserHandler, authMiddlware interface{}, adminMiddleware interface{}) {
+	userApi := r.Group("/api/users")
+
+	userApi.Patch("/:user_id/role", handler.EditRole).Use(authMiddlware, adminMiddleware)
 }

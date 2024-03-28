@@ -5,7 +5,7 @@ import (
 	"log"
 	"sad/internal/config"
 	errorsModels "sad/internal/models/errors"
-	userModels "sad/internal/models/user"
+	usersModels "sad/internal/models/user"
 	"time"
 
 	authModels "sad/internal/models/auth"
@@ -29,7 +29,7 @@ func NewService(userRepository repositories.UserRepository) *service {
 	}
 }
 
-func (s *service) Login(c *fiber.Ctx, user userModels.UserCredentials) (string, error) {
+func (s *service) Login(c *fiber.Ctx, user usersModels.UserCredentials) (string, error) {
 	log.Printf("Attempting login for user: %s", user.Login)
 	existedUser, err := s.userRepository.GetByLogin(c, user.Login)
 
@@ -48,7 +48,7 @@ func (s *service) Login(c *fiber.Ctx, user userModels.UserCredentials) (string, 
 		return "", errorsModels.ErrInvalidCredentials
 	}
 
-	token, err := s.GetJWTToken(existedUser.UUID)
+	token, err := s.GetJWTToken(existedUser.Id)
 
 	if err != nil {
 		log.Printf("Error generating JWT token for user: %s, error: %s", user.Login, err.Error())
@@ -85,12 +85,12 @@ func (s *service) Register(c *fiber.Ctx, user authModels.UserRegistrationRequest
 		return "", errorsModels.ErrServer
 	}
 
-	newUser := userModels.User{
-		UUID:     uuid.New().String(),
+	newUser := usersModels.User{
+		Id:       uuid.New().String(),
 		Name:     user.Name,
 		Login:    user.Login,
 		Password: hashedPassword,
-		Role:     userModels.Student,
+		Role:     usersModels.Student,
 	}
 
 	if err := s.userRepository.Create(c, newUser); err != nil {
@@ -109,8 +109,8 @@ func (s *service) Register(c *fiber.Ctx, user authModels.UserRegistrationRequest
 		}
 	}
 
-	log.Printf("User '%s' registered successfully with UUID: %s", newUser.Login, newUser.UUID)
-	return newUser.UUID, nil
+	log.Printf("User '%s' registered successfully with id: %s", newUser.Login, newUser.Id)
+	return newUser.Id, nil
 }
 
 func (s *service) GetJWTToken(uuid string) (string, error) {
@@ -137,6 +137,6 @@ func (s *service) GetJWTToken(uuid string) (string, error) {
 		return "", err
 	}
 
-	log.Printf("JWT token generated for UUID: %s", uuid)
+	log.Printf("JWT token generated for id: %s", uuid)
 	return tokenString, nil
 }

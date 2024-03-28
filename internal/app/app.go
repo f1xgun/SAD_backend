@@ -5,8 +5,10 @@ import (
 	"log"
 	"sad/internal/config"
 	middleware "sad/internal/middlewares/auth"
+	"sad/internal/middlewares/users"
 	"sad/internal/routes/auth"
-	"sad/internal/routes/user"
+	"sad/internal/routes/groups"
+	usersRoutes "sad/internal/routes/user"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -18,6 +20,8 @@ type App struct {
 	serviceProvider *serviceProvider
 
 	router *fiber.App
+
+	config config.Config
 }
 
 func NewApp() (*App, error) {
@@ -29,13 +33,15 @@ func NewApp() (*App, error) {
 		log.Fatalf("Failed to load environment variables: %s", err.Error())
 	}
 
-	app.initDeps(config)
+	app.config = config
+
+	app.initDeps()
 
 	return app, nil
 }
 
-func (a *App) initDeps(config config.Config) {
-	serviceProvider, err := newServiceProvider(config)
+func (a *App) initDeps() {
+	serviceProvider, err := newServiceProvider(a.config)
 
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %s", err.Error())
@@ -43,10 +49,10 @@ func (a *App) initDeps(config config.Config) {
 	}
 
 	a.serviceProvider = serviceProvider
-	a.router = a.setupRouter(config)
+	a.router = a.setupRouter()
 }
 
-func (a *App) setupRouter(config config.Config) *fiber.App {
+func (a *App) setupRouter() *fiber.App {
 	r := fiber.New()
 
 	r.Use(recover.New(recover.Config{
@@ -67,16 +73,11 @@ func (a *App) setupRouter(config config.Config) *fiber.App {
 
 	userHandler := a.serviceProvider.UserHandler()
 
-	user.UserRoutes(r, userHandler, middleware.AuthMiddleware(config))
+	usersRoutes.UserRoutes(r, userHandler, middleware.AuthMiddleware(a.config), users.AdminMiddleware(a.serviceProvider.userService))
 
-	api := r.Group("/api").Use(middleware.AuthMiddleware(config))
+	groupsHandler := a.serviceProvider.GroupsHandler()
 
-	api.Post("/example", func(c *fiber.Ctx) error {
-		return c.Status(fiber.StatusOK).JSON(fiber.Map{
-			"status":  "success",
-			"message": "Welcome to SAD",
-		})
-	})
+	groups.GroupsRoutes(r, groupsHandler, middleware.AuthMiddleware(a.config), users.AdminMiddleware(a.serviceProvider.userService))
 
 	return r
 }

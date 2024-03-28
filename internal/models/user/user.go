@@ -1,4 +1,4 @@
-package userModels
+package usersModels
 
 type UserCredentials struct {
 	Login    string   `json:"login"`
@@ -6,8 +6,14 @@ type UserCredentials struct {
 	Role     UserRole `json:"role"`
 }
 
+type UserInfo struct {
+	Id    string `json:"id"`
+	Name  string `json:"name"`
+	Login string `json:"login"`
+}
+
 type User struct {
-	UUID     string
+	Id       string
 	Name     string
 	Login    string
 	Password string
@@ -15,7 +21,7 @@ type User struct {
 }
 
 type UserRepoModel struct {
-	UUID     string
+	Id       string
 	Login    string
 	Password string
 }

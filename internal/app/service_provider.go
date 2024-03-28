@@ -4,11 +4,14 @@ import (
 	"sad/internal/config"
 	database "sad/internal/db"
 	"sad/internal/handlers/auth"
-	"sad/internal/handlers/user"
+	"sad/internal/handlers/groups"
+	users "sad/internal/handlers/user"
 	"sad/internal/repositories"
+	groupsRepository "sad/internal/repositories/groups"
 	userRepository "sad/internal/repositories/user"
 	"sad/internal/services"
 	authService "sad/internal/services/auth"
+	groupsService "sad/internal/services/groups"
 	userService "sad/internal/services/user"
 
 	"github.com/jackc/pgx/v5"
@@ -19,11 +22,17 @@ type serviceProvider struct {
 
 	userService services.UserService
 
+	groupsService services.GroupsService
+
 	userRepository repositories.UserRepository
+
+	groupsRepository repositories.GroupsRepository
 
 	authHandler auth.AuthHandler
 
-	userHandler user.UserHandler
+	userHandler users.UserHandler
+
+	groupsHandler groups.GroupsHandler
 
 	db *pgx.Conn
 }
@@ -48,6 +57,14 @@ func (s *serviceProvider) UserRepository() repositories.UserRepository {
 	return s.userRepository
 }
 
+func (s *serviceProvider) GroupsRepository() repositories.GroupsRepository {
+	if s.groupsRepository == nil {
+		s.groupsRepository = groupsRepository.NewRepository(s.db)
+	}
+
+	return s.groupsRepository
+}
+
 func (s *serviceProvider) AuthService() services.AuthService {
 	if s.authService == nil {
 		s.authService = authService.NewService(s.UserRepository())
@@ -64,6 +81,14 @@ func (s *serviceProvider) UserService() services.UserService {
 	return s.userService
 }
 
+func (s *serviceProvider) GroupsService() services.GroupsService {
+	if s.groupsService == nil {
+		s.groupsService = groupsService.NewService(s.GroupsRepository(), s.UserRepository())
+	}
+
+	return s.groupsService
+}
+
 func (s *serviceProvider) AuthHandler() auth.AuthHandler {
 	if s.authHandler == nil {
 		s.authHandler = auth.NewAuthHandler(s.AuthService())
@@ -72,10 +97,18 @@ func (s *serviceProvider) AuthHandler() auth.AuthHandler {
 	return s.authHandler
 }
 
-func (s *serviceProvider) UserHandler() user.UserHandler {
+func (s *serviceProvider) UserHandler() users.UserHandler {
 	if s.userHandler == nil {
-		s.userHandler = user.NewUserHandler(s.UserService())
+		s.userHandler = users.NewUserHandler(s.UserService())
 	}
 
 	return s.userHandler
+}
+
+func (s *serviceProvider) GroupsHandler() groups.GroupsHandler {
+	if s.groupsHandler == nil {
+		s.groupsHandler = groups.NewGroupsHandler(s.GroupsService())
+	}
+
+	return s.groupsHandler
 }
