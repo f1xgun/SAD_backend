@@ -5,13 +5,16 @@ import (
 	database "sad/internal/db"
 	"sad/internal/handlers/auth"
 	"sad/internal/handlers/groups"
+	"sad/internal/handlers/subjects"
 	users "sad/internal/handlers/user"
 	"sad/internal/repositories"
 	groupsRepository "sad/internal/repositories/groups"
+	subjectsRepository "sad/internal/repositories/subjects"
 	userRepository "sad/internal/repositories/user"
 	"sad/internal/services"
 	authService "sad/internal/services/auth"
 	groupsService "sad/internal/services/groups"
+	subjectsService "sad/internal/services/subjects"
 	userService "sad/internal/services/user"
 
 	"github.com/jackc/pgx/v5"
@@ -24,15 +27,21 @@ type serviceProvider struct {
 
 	groupsService services.GroupsService
 
+	subjectsService services.SubjectsService
+
 	userRepository repositories.UserRepository
 
 	groupsRepository repositories.GroupsRepository
+
+	subjectsRepository repositories.SubjectsRepository
 
 	authHandler auth.AuthHandler
 
 	userHandler users.UserHandler
 
 	groupsHandler groups.GroupsHandler
+
+	subjectsHandler subjects.SubjectsHandler
 
 	db *pgx.Conn
 }
@@ -65,6 +74,14 @@ func (s *serviceProvider) GroupsRepository() repositories.GroupsRepository {
 	return s.groupsRepository
 }
 
+func (s *serviceProvider) SubjectsRepository() repositories.SubjectsRepository {
+	if s.subjectsRepository == nil {
+		s.subjectsRepository = subjectsRepository.NewRepository(s.db)
+	}
+
+	return s.subjectsRepository
+}
+
 func (s *serviceProvider) AuthService() services.AuthService {
 	if s.authService == nil {
 		s.authService = authService.NewService(s.UserRepository())
@@ -89,6 +106,14 @@ func (s *serviceProvider) GroupsService() services.GroupsService {
 	return s.groupsService
 }
 
+func (s *serviceProvider) SubjectsService() services.SubjectsService {
+	if s.subjectsService == nil {
+		s.subjectsService = subjectsService.NewService(s.GroupsRepository(), s.SubjectsRepository())
+	}
+
+	return s.subjectsService
+}
+
 func (s *serviceProvider) AuthHandler() auth.AuthHandler {
 	if s.authHandler == nil {
 		s.authHandler = auth.NewAuthHandler(s.AuthService())
@@ -111,4 +136,12 @@ func (s *serviceProvider) GroupsHandler() groups.GroupsHandler {
 	}
 
 	return s.groupsHandler
+}
+
+func (s *serviceProvider) SubjectsHandler() subjects.SubjectsHandler {
+	if s.subjectsHandler == nil {
+		s.subjectsHandler = subjects.NewSubjectsHandler(s.SubjectsService())
+	}
+
+	return s.subjectsHandler
 }

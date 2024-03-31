@@ -139,7 +139,9 @@ func (r *repository) GetUsersInfoByIds(c *fiber.Ctx, usersId []string) ([]usersM
 			log.Printf("Error scanning user info: %v", err)
 			continue
 		}
-		usersInfo = append(usersInfo, userInfo)
+		if userInfo.Id.Valid {
+			usersInfo = append(usersInfo, userInfo)
+		}
 	}
 
 	if err = rows.Err(); err != nil {

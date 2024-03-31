@@ -76,7 +76,9 @@ func (r *repository) GetAll(c *fiber.Ctx) ([]groupsModels.GroupRepoModel, error)
 			log.Printf("Error scanning group: %v", err)
 			continue
 		}
-		groups = append(groups, group)
+		if group.Id.Valid {
+			groups = append(groups, group)
+		}
 	}
 
 	if err = rows.Err(); err != nil {

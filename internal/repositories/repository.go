@@ -32,8 +32,8 @@ type GroupsRepository interface {
 
 type SubjectsRepository interface {
 	Create(c *fiber.Ctx, subject subjectsModels.Subject) error
-	GetAll(c *fiber.Ctx) ([]subjectsModels.Subject, error)
-	GetById(c *fiber.Ctx, groupId string) (*subjectsModels.Subject, error)
+	GetAll(c *fiber.Ctx) ([]subjectsModels.SubjectRepoModel, error)
+	GetById(c *fiber.Ctx, groupId string) (*subjectsModels.SubjectRepoModel, error)
 	DeleteSubject(c *fiber.Ctx, subjectId string) error
 	AddSubjectToGroup(c *fiber.Ctx, subjectId string, groupId string) error
 	DeleteSubjectFromGroup(c *fiber.Ctx, subjectId string, groupId string) error

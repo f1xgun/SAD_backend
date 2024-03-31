@@ -228,7 +228,7 @@ func (s *service) UpdateGroup(c *fiber.Ctx, groupId string, group groupsModels.G
 		return err
 	}
 
-	if existedGroup == nil {
+	if existedGroup == nil || !existedGroup.Id.Valid {
 		log.Printf("Group '%s' does not exist.", groupId)
 		return errorsModels.ErrGroupDoesNotExist
 	}

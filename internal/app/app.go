@@ -8,6 +8,7 @@ import (
 	"sad/internal/middlewares/users"
 	"sad/internal/routes/auth"
 	"sad/internal/routes/groups"
+	"sad/internal/routes/subjects"
 	usersRoutes "sad/internal/routes/user"
 
 	"github.com/gofiber/fiber/v2"
@@ -78,6 +79,10 @@ func (a *App) setupRouter() *fiber.App {
 	groupsHandler := a.serviceProvider.GroupsHandler()
 
 	groups.GroupsRoutes(r, groupsHandler, middleware.AuthMiddleware(a.config), users.AdminMiddleware(a.serviceProvider.userService))
+
+	subjectsHandler := a.serviceProvider.SubjectsHandler()
+
+	subjects.SubjectsRoutes(r, subjectsHandler, middleware.AuthMiddleware(a.config), users.AdminMiddleware(a.serviceProvider.userService))
 
 	return r
 }
