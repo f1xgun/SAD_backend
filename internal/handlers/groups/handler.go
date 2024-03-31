@@ -15,6 +15,7 @@ type GroupsHandler interface {
 	Create(c *fiber.Ctx) error
 	GetAll(c *fiber.Ctx) error
 	Get(c *fiber.Ctx) error
+	GetWithDetails(c *fiber.Ctx) error
 	Delete(c *fiber.Ctx) error
 	AddUserToGroup(c *fiber.Ctx) error
 	DeleteUserFromGroup(c *fiber.Ctx) error
@@ -176,4 +177,21 @@ func (h *groupsHandler) Update(c *fiber.Ctx) error {
 		return c.Status(status).JSON(fiber.Map{"error": errMsg})
 	}
 	return c.Status(http.StatusOK).JSON(fiber.Map{"message": "Group update successfully"})
+}
+
+func (h *groupsHandler) GetWithDetails(c *fiber.Ctx) error {
+	groupId := c.Params("group_id")
+	group, err := h.groupsService.GetByIdWithUsers(c, groupId)
+	if err != nil {
+		log.Printf("Failed to retrieve group: %v", err)
+		var status int
+		switch err {
+		case errorsModels.ErrGroupDoesNotExist:
+			status = http.StatusNotFound
+		default:
+			status = http.StatusInternalServerError
+		}
+		return c.Status(status).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(group)
 }

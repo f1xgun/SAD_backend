@@ -3,7 +3,7 @@ package users
 import (
 	"log"
 	errorsModels "sad/internal/models/errors"
-	usersModels "sad/internal/models/user"
+	usersModels "sad/internal/models/users"
 	"sad/internal/repositories"
 
 	"github.com/gofiber/fiber/v2"

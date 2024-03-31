@@ -5,7 +5,7 @@ import (
 	"log"
 	"sad/internal/config"
 	errorsModels "sad/internal/models/errors"
-	usersModels "sad/internal/models/user"
+	usersModels "sad/internal/models/users"
 	"time"
 
 	authModels "sad/internal/models/auth"
@@ -43,12 +43,12 @@ func (s *service) Login(c *fiber.Ctx, user usersModels.UserCredentials) (string,
 		return "", errorsModels.ErrUserNotFound
 	}
 
-	if !utils.CompareHashPassword(user.Password, existedUser.Password) {
+	if !utils.CompareHashPassword(user.Password, existedUser.Password.String) {
 		log.Printf("Invalid credentials for user: %s", user.Login)
 		return "", errorsModels.ErrInvalidCredentials
 	}
 
-	token, err := s.GetJWTToken(existedUser.Id)
+	token, err := s.GetJWTToken(existedUser.Id.String)
 
 	if err != nil {
 		log.Printf("Error generating JWT token for user: %s, error: %s", user.Login, err.Error())

@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 	errorsModels "sad/internal/models/errors"
-	usersModels "sad/internal/models/user"
+	usersModels "sad/internal/models/users"
 	"sad/internal/services"
 
 	"github.com/gofiber/fiber/v2"

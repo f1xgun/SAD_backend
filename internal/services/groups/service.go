@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	groupsMapper "sad/internal/mappers/groups"
 	errorsModels "sad/internal/models/errors"
 	groupsModels "sad/internal/models/groups"
 )
@@ -56,44 +57,54 @@ func (s *service) Create(c *fiber.Ctx, number string) error {
 	return nil
 }
 
-func (s *service) GetById(c *fiber.Ctx, groupId string) (*groupsModels.GroupWithUsers, error) {
+func (s *service) GetById(c *fiber.Ctx, groupId string) (*groupsModels.Group, error) {
 	log.Printf("Retrieving group with ID: %s\n", groupId)
 
-	group, err := s.groupsRepository.GetById(c, groupId)
+	groupRepo, err := s.groupsRepository.GetById(c, groupId)
 	if err != nil {
 		log.Printf("Error retrieving group with ID: %s, error: %v\n", groupId, err)
 		return nil, err
 	}
-	if group == nil {
+
+	if groupRepo == nil {
 		log.Printf("Group with ID: %s does not exist\n", groupId)
 		return nil, errorsModels.ErrGroupDoesNotExist
 	}
 
-	usersIdInGroup, err := s.groupsRepository.GetGroupUsers(c, groupId)
+	log.Printf("Successfully retrieved group with users for group ID: %s\n", groupId)
+
+	group := groupsMapper.FromGroupRepoModelToEntity(*groupRepo)
+
+	return &group, nil
+}
+
+func (s *service) GetByIdWithUsers(c *fiber.Ctx, groupId string) (*groupsModels.GroupWithUsers, error) {
+	log.Printf("Retrieving group with ID: %s\n", groupId)
+
+	groupRepo, err := s.groupsRepository.GetByIdWithUsers(c, groupId)
 	if err != nil {
-		log.Printf("Error retrieving group users for group ID: %s, error: %v\n", groupId, err)
+		log.Printf("Error retrieving group with ID: %s, error: %v\n", groupId, err)
 		return nil, err
 	}
 
-	usersInfo, err := s.usersRepository.GetUsersInfoByIds(c, usersIdInGroup)
-	if err != nil {
-		log.Printf("Error retrieving users info for group ID: %s, error: %v\n", groupId, err)
-		return nil, err
+	if groupRepo == nil {
+		log.Printf("Group with ID: %s does not exist\n", groupId)
+		return nil, errorsModels.ErrGroupDoesNotExist
 	}
 
-	groupWithUsers := &groupsModels.GroupWithUsers{
-		Group: *group,
-		Users: usersInfo,
-	}
+	group := groupsMapper.FromGroupWithUsersRepoModelToEntity(*groupRepo)
 
 	log.Printf("Successfully retrieved group with users for group ID: %s\n", groupId)
 
-	return groupWithUsers, nil
+	return &group, nil
 }
 
 func (s *service) GetAll(c *fiber.Ctx) ([]groupsModels.Group, error) {
 	log.Println("Retrieving all groups")
-	groups, err := s.groupsRepository.GetAll(c)
+	groupsRepo, err := s.groupsRepository.GetAll(c)
+
+	groups := groupsMapper.FromGroupsRepoModelToEntity(groupsRepo)
+
 	return groups, err
 }
 
@@ -222,9 +233,9 @@ func (s *service) UpdateGroup(c *fiber.Ctx, groupId string, group groupsModels.G
 		return errorsModels.ErrGroupDoesNotExist
 	}
 
-	group.Id = existedGroup.Id
+	group.Id = existedGroup.Id.String
 	if group.Number == "" {
-		group.Number = existedGroup.Number
+		group.Number = existedGroup.Number.String
 	}
 
 	if err := s.groupsRepository.UpdateGroup(c, group); err != nil {

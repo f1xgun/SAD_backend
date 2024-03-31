@@ -1,12 +1,18 @@
 package groupsModels
 
 import (
-	usersModels "sad/internal/models/user"
+	"database/sql"
+	usersModels "sad/internal/models/users"
 )
 
 type Group struct {
 	Id     string `json:"id"`
 	Number string `json:"number"`
+}
+
+type GroupRepoModel struct {
+	Id     sql.NullString
+	Number sql.NullString
 }
 
 type UserGroup struct {
@@ -17,4 +23,9 @@ type UserGroup struct {
 type GroupWithUsers struct {
 	Group
 	Users []usersModels.UserInfo `json:"users"`
+}
+
+type GroupWithUsersRepo struct {
+	GroupRepoModel
+	Users []usersModels.UserInfoRepoModel
 }

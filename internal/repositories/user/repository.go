@@ -3,7 +3,7 @@ package users
 import (
 	"fmt"
 	"log"
-	usersModels "sad/internal/models/user"
+	usersModels "sad/internal/models/users"
 	def "sad/internal/repositories"
 	"strings"
 
@@ -112,7 +112,7 @@ func (r *repository) CheckUserExists(c *fiber.Ctx, userId string) (bool, error) 
 	return count > 0, nil
 }
 
-func (r *repository) GetUsersInfoByIds(c *fiber.Ctx, usersId []string) ([]usersModels.UserInfo, error) {
+func (r *repository) GetUsersInfoByIds(c *fiber.Ctx, usersId []string) ([]usersModels.UserInfoRepoModel, error) {
 	log.Printf("Fetching user info for ids: %v", usersId)
 
 	placeholders := make([]string, len(usersId))
@@ -132,9 +132,9 @@ func (r *repository) GetUsersInfoByIds(c *fiber.Ctx, usersId []string) ([]usersM
 	}
 	defer rows.Close()
 
-	var usersInfo []usersModels.UserInfo
+	var usersInfo []usersModels.UserInfoRepoModel
 	for rows.Next() {
-		var userInfo usersModels.UserInfo
+		var userInfo usersModels.UserInfoRepoModel
 		if err := rows.Scan(&userInfo.Id, &userInfo.Login, &userInfo.Name); err != nil {
 			log.Printf("Error scanning user info: %v", err)
 			continue

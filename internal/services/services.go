@@ -3,9 +3,11 @@ package services
 import (
 	authModels "sad/internal/models/auth"
 
-	usersModels "sad/internal/models/user"
+	usersModels "sad/internal/models/users"
 
 	groupsModels "sad/internal/models/groups"
+
+	subjectsModels "sad/internal/models/subjects"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -23,9 +25,19 @@ type UserService interface {
 type GroupsService interface {
 	Create(c *fiber.Ctx, number string) error
 	GetAll(c *fiber.Ctx) ([]groupsModels.Group, error)
-	GetById(c *fiber.Ctx, groupId string) (*groupsModels.GroupWithUsers, error)
+	GetById(c *fiber.Ctx, groupId string) (*groupsModels.Group, error)
+	GetByIdWithUsers(c *fiber.Ctx, groupId string) (*groupsModels.GroupWithUsers, error)
 	DeleteGroup(c *fiber.Ctx, groupId string) error
 	AddUserToGroup(c *fiber.Ctx, groupId string, userId string) error
 	DeleteUserFromGroup(c *fiber.Ctx, groupId string, userId string) error
 	UpdateGroup(c *fiber.Ctx, groupId string, group groupsModels.Group) error
+}
+
+type SubjectsService interface {
+	Create(c *fiber.Ctx, name string) error
+	GetAll(c *fiber.Ctx) ([]subjectsModels.Subject, error)
+	DeleteSubject(c *fiber.Ctx, subjectId string) error
+	AddSubjectToGroup(c *fiber.Ctx, subjectId string, groupId string) error
+	DeleteSubjectFromGroup(c *fiber.Ctx, subjectId string, groupId string) error
+	UpdateSubject(c *fiber.Ctx, subjectId string, subject subjectsModels.Subject) error
 }

@@ -15,6 +15,7 @@ func GroupsRoutes(r *fiber.App, handler groups.GroupsHandler, authMiddlware inte
 	group := groupApi.Group("/:group_id")
 
 	group.Get("/", handler.Get)                            // Получить группу по ID
+	group.Get("/details", handler.GetWithDetails)          // Получить группу по ID с деталями
 	group.Delete("/", handler.Delete).Use(adminMiddleware) // Удалить группу по ID
 	group.Patch("/", handler.Update).Use(adminMiddleware)  // Обновить группу по ID
 

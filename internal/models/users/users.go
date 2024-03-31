@@ -1,5 +1,7 @@
 package usersModels
 
+import "database/sql"
+
 type UserCredentials struct {
 	Login    string   `json:"login"`
 	Password string   `json:"password"`
@@ -21,9 +23,15 @@ type User struct {
 }
 
 type UserRepoModel struct {
-	Id       string
-	Login    string
-	Password string
+	Id       sql.NullString
+	Login    sql.NullString
+	Password sql.NullString
+}
+
+type UserInfoRepoModel struct {
+	Id    sql.NullString
+	Name  sql.NullString
+	Login sql.NullString
 }
 
 type UserRole string
