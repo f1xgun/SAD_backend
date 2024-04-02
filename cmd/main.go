@@ -6,15 +6,15 @@ import (
 )
 
 func main() {
-	app, err := app.NewApp()
+	application, err := app.NewApp()
 
 	if err != nil {
 		log.Fatalf("Failed to init app: %s", err.Error())
 	}
 
-	if err := app.Run(); err != nil {
+	if err := application.Run(); err != nil {
 		log.Fatalf("Failed to run app: %s", err.Error())
 	}
 
-	defer app.CloseDBConnection()
+	defer application.CloseDBConnection()
 }

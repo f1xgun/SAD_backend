@@ -6,8 +6,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func GroupsRoutes(r *fiber.App, handler groups.GroupsHandler, authMiddlware interface{}, adminMiddleware interface{}) {
-	groupApi := r.Group("/api/groups").Use(authMiddlware)
+func GroupsRoutes(r *fiber.App, handler groups.GroupsHandler, authMiddleware interface{}, adminMiddleware interface{}) {
+	groupApi := r.Group("/api/groups").Use(authMiddleware)
 
 	groupApi.Get("/", handler.GetAll)                       // Получить список всех групп
 	groupApi.Post("/", handler.Create).Use(adminMiddleware) // Создать новую группу

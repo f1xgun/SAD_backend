@@ -1,10 +1,11 @@
 package users
 
 import (
+	"errors"
 	"log"
 	"net/http"
-	errorsModels "sad/internal/models/errors"
-	usersModels "sad/internal/models/users"
+	"sad/internal/models/errors"
+	"sad/internal/models/users"
 	"sad/internal/services"
 
 	"github.com/gofiber/fiber/v2"
@@ -36,14 +37,14 @@ func (h *userHandler) EditRole(c *fiber.Ctx) error {
 	if err != nil {
 		var statusCode int
 		var errMsg string
-		switch err {
-		case errorsModels.ErrNoPermission:
+		switch {
+		case errors.Is(err, errorsModels.ErrNoPermission):
 			statusCode = http.StatusForbidden
 			errMsg = "No permission to change user role"
-		case errorsModels.ErrUserNotFound:
+		case errors.Is(err, errorsModels.ErrUserNotFound):
 			statusCode = http.StatusNotFound
 			errMsg = "User with this id does not exist"
-		case errorsModels.ErrChangeOwnRole:
+		case errors.Is(err, errorsModels.ErrChangeOwnRole):
 			statusCode = http.StatusForbidden
 			errMsg = "Cannot change own role"
 		default:

@@ -1,7 +1,7 @@
 package subjectsMappers
 
 import (
-	subjectsModels "sad/internal/models/subjects"
+	"sad/internal/models/subjects"
 )
 
 func FromSubjectRepoModelToEntity(repoModel subjectsModels.SubjectRepoModel) subjectsModels.Subject {

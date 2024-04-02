@@ -1,7 +1,7 @@
 package usersMapper
 
 import (
-	usersModels "sad/internal/models/users"
+	"sad/internal/models/users"
 )
 
 func UserInfoFromRepoToService(repoModel usersModels.UserInfoRepoModel) usersModels.UserInfo {

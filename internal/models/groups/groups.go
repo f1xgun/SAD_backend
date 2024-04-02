@@ -2,7 +2,7 @@ package groupsModels
 
 import (
 	"database/sql"
-	usersModels "sad/internal/models/users"
+	"sad/internal/models/users"
 )
 
 type Group struct {

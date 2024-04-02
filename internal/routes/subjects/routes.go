@@ -6,8 +6,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func SubjectsRoutes(r *fiber.App, handler subjects.SubjectsHandler, authMiddlware interface{}, adminMiddleware interface{}) {
-	subjectApi := r.Group("/api/subjects").Use(authMiddlware)
+func SubjectsRoutes(r *fiber.App, handler subjects.SubjectsHandler, authMiddleware interface{}, adminMiddleware interface{}) {
+	subjectApi := r.Group("/api/subjects").Use(authMiddleware)
 
 	subjectApi.Get("/", handler.GetAll)                       // Получить список всех предметов
 	subjectApi.Post("/", handler.Create).Use(adminMiddleware) // Создать новый предмет

@@ -1,14 +1,15 @@
 package subjects
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"sad/internal/services"
 
 	"github.com/gofiber/fiber/v2"
 
-	errorsModels "sad/internal/models/errors"
-	subjectsModels "sad/internal/models/subjects"
+	"sad/internal/models/errors"
+	"sad/internal/models/subjects"
 )
 
 type SubjectsHandler interface {
@@ -41,11 +42,11 @@ func (h *subjectsHandler) Create(c *fiber.Ctx) error {
 	if err != nil {
 		var status int
 		var errMsg string
-		switch err {
-		case errorsModels.ErrSubjectExists:
+		switch {
+		case errors.Is(err, errorsModels.ErrSubjectExists):
 			status = http.StatusConflict
 			errMsg = "Subject with this name already exist"
-		case errorsModels.ErrServer:
+		case errors.Is(err, errorsModels.ErrServer):
 			status = http.StatusInternalServerError
 			errMsg = "Server error"
 		default:
@@ -80,10 +81,10 @@ func (h *subjectsHandler) AddSubjectToGroup(c *fiber.Ctx) error {
 	if err != nil {
 		log.Printf("Failed to add subject to group: %v", err)
 		var status int
-		switch err {
-		case errorsModels.ErrSubjectDoesNotExist:
+		switch {
+		case errors.Is(err, errorsModels.ErrSubjectDoesNotExist):
 			status = http.StatusNotFound
-		case errorsModels.ErrSubjectExists:
+		case errors.Is(err, errorsModels.ErrSubjectExists):
 			status = http.StatusConflict
 		default:
 			status = http.StatusInternalServerError
@@ -106,10 +107,10 @@ func (h *subjectsHandler) DeleteSubjectFromGroup(c *fiber.Ctx) error {
 	if err != nil {
 		log.Printf("Failed to delete subject from group: %v", err)
 		var status int
-		switch err {
-		case errorsModels.ErrSubjectDoesNotExist:
+		switch {
+		case errors.Is(err, errorsModels.ErrSubjectDoesNotExist):
 			status = http.StatusNotFound
-		case errorsModels.ErrGroupNotHasSubject:
+		case errors.Is(err, errorsModels.ErrGroupNotHasSubject):
 			status = http.StatusConflict
 		default:
 			status = http.StatusInternalServerError
@@ -125,8 +126,8 @@ func (h *subjectsHandler) Delete(c *fiber.Ctx) error {
 	if err != nil {
 		log.Printf("Failed to delete subject: %v", err)
 		var status int
-		switch err {
-		case errorsModels.ErrSubjectDoesNotExist:
+		switch {
+		case errors.Is(err, errorsModels.ErrSubjectDoesNotExist):
 			status = http.StatusNotFound
 		default:
 			status = http.StatusInternalServerError
@@ -147,11 +148,11 @@ func (h *subjectsHandler) Update(c *fiber.Ctx) error {
 	if err != nil {
 		var status int
 		var errMsg string
-		switch err {
-		case errorsModels.ErrSubjectExists:
+		switch {
+		case errors.Is(err, errorsModels.ErrSubjectExists):
 			status = http.StatusConflict
 			errMsg = "Subject with this number already exist"
-		case errorsModels.ErrServer:
+		case errors.Is(err, errorsModels.ErrServer):
 			status = http.StatusInternalServerError
 			errMsg = "Server error"
 		default:

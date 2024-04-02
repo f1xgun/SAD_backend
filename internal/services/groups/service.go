@@ -9,9 +9,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	groupsMapper "sad/internal/mappers/groups"
-	errorsModels "sad/internal/models/errors"
-	groupsModels "sad/internal/models/groups"
+	"sad/internal/mappers/groups"
+	"sad/internal/models/errors"
+	"sad/internal/models/groups"
 )
 
 type service struct {
@@ -39,7 +39,8 @@ func (s *service) Create(c *fiber.Ctx, number string) error {
 	}
 
 	if err := s.groupsRepository.Create(c, newGroup); err != nil {
-		if pgErr, ok := err.(*pgconn.PgError); ok {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
 			switch pgErr.Code {
 			case errorsModels.NeedUniqueValueErrCode:
 				log.Printf("Group with number '%s' already exists", newGroup.Number)
@@ -48,9 +49,6 @@ func (s *service) Create(c *fiber.Ctx, number string) error {
 				log.Printf("Error creating group '%s' in the repository: %s", newGroup.Number, err.Error())
 				return errorsModels.ErrServer
 			}
-		} else {
-			log.Printf("Error creating group '%s' in the repository: %s", newGroup.Number, err.Error())
-			return errorsModels.ErrServer
 		}
 	}
 
@@ -139,7 +137,8 @@ func (s *service) AddUserToGroup(c *fiber.Ctx, groupId string, userId string) er
 	}
 
 	if err := s.groupsRepository.AddUserToGroup(c, groupId, userId); err != nil {
-		if pgErr, ok := err.(*pgconn.PgError); ok {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
 			switch pgErr.Code {
 			case errorsModels.NeedUniqueValueErrCode:
 				log.Printf("User '%s' already exists in group '%s'.", userId, groupId)
@@ -148,9 +147,6 @@ func (s *service) AddUserToGroup(c *fiber.Ctx, groupId string, userId string) er
 				log.Printf("Postgres error while adding user '%s' to group '%s': %v", userId, groupId, err)
 				return errorsModels.ErrServer
 			}
-		} else {
-			log.Printf("Unknown error while adding user '%s' to group '%s': %v", userId, groupId, err)
-			return errorsModels.ErrServer
 		}
 	}
 

@@ -14,7 +14,6 @@ type UserRepository interface {
 	Create(c *fiber.Ctx, user usersModels.User) error
 	ChangeUserRole(c *fiber.Ctx, userId string, newRole usersModels.UserRole) error
 	CheckUserExists(c *fiber.Ctx, userId string) (bool, error)
-	GetUsersInfoByIds(c *fiber.Ctx, usersId []string) ([]usersModels.UserInfoRepoModel, error)
 }
 
 type GroupsRepository interface {

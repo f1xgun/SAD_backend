@@ -1,14 +1,12 @@
 package users
 
 import (
-	"fmt"
+	"errors"
+	"github.com/gofiber/fiber/v2"
+	"github.com/jackc/pgx/v5"
 	"log"
 	usersModels "sad/internal/models/users"
 	def "sad/internal/repositories"
-	"strings"
-
-	"github.com/gofiber/fiber/v2"
-	"github.com/jackc/pgx/v5"
 )
 
 var _ def.UserRepository = (*repository)(nil)
@@ -31,7 +29,7 @@ func (r *repository) GetById(c *fiber.Ctx, userId string) (*usersModels.UserCred
 
 	userCredentials := &usersModels.UserCredentials{}
 	err := row.Scan(&userCredentials.Login, &userCredentials.Password, &userCredentials.Role)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		log.Printf("User not found with id: %s", userId)
 		return nil, nil
 	} else if err != nil {
@@ -51,7 +49,7 @@ func (r *repository) GetByLogin(c *fiber.Ctx, login string) (*usersModels.UserRe
 
 	userCredentials := &usersModels.UserRepoModel{}
 	err := row.Scan(&userCredentials.Id, &userCredentials.Login, &userCredentials.Password)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		log.Printf("User not found with login: %s", login)
 		return nil, nil
 	} else if err != nil {
@@ -110,45 +108,4 @@ func (r *repository) CheckUserExists(c *fiber.Ctx, userId string) (bool, error) 
 		return false, err
 	}
 	return count > 0, nil
-}
-
-func (r *repository) GetUsersInfoByIds(c *fiber.Ctx, usersId []string) ([]usersModels.UserInfoRepoModel, error) {
-	log.Printf("Fetching user info for ids: %v", usersId)
-
-	placeholders := make([]string, len(usersId))
-	args := make([]interface{}, len(usersId))
-	for i, id := range usersId {
-		placeholders[i] = fmt.Sprintf("$%d", i+1)
-		args[i] = id
-	}
-
-	query := fmt.Sprintf("SELECT uuid, login, name FROM users WHERE uuid IN (%s)", strings.Join(placeholders, ","))
-	log.Printf("Executing query: %s with args: %v", query, args)
-
-	rows, err := r.db.Query(c.Context(), query, args...)
-	if err != nil {
-		log.Printf("Error fetching user's info: %v", err)
-		return nil, err
-	}
-	defer rows.Close()
-
-	var usersInfo []usersModels.UserInfoRepoModel
-	for rows.Next() {
-		var userInfo usersModels.UserInfoRepoModel
-		if err := rows.Scan(&userInfo.Id, &userInfo.Login, &userInfo.Name); err != nil {
-			log.Printf("Error scanning user info: %v", err)
-			continue
-		}
-		if userInfo.Id.Valid {
-			usersInfo = append(usersInfo, userInfo)
-		}
-	}
-
-	if err = rows.Err(); err != nil {
-		log.Printf("Error iterating over users: %v", err)
-		return nil, err
-	}
-
-	log.Printf("Successfully fetched user info for ids: %v", usersId)
-	return usersInfo, nil
 }

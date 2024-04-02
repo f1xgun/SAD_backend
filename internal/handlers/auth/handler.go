@@ -1,10 +1,11 @@
 package auth
 
 import (
+	"errors"
 	"net/http"
-	authModels "sad/internal/models/auth"
-	errorsModels "sad/internal/models/errors"
-	usersModels "sad/internal/models/users"
+	"sad/internal/models/auth"
+	"sad/internal/models/errors"
+	"sad/internal/models/users"
 	"sad/internal/services"
 
 	"github.com/gofiber/fiber/v2"
@@ -38,14 +39,14 @@ func (h *authHandler) Login(c *fiber.Ctx) error {
 		var statusCode int
 		var errMsg string
 
-		switch err {
-		case errorsModels.ErrUserNotFound:
+		switch {
+		case errors.Is(err, errorsModels.ErrUserNotFound):
 			statusCode = http.StatusNotFound
 			errMsg = "User with this login does not exist"
-		case errorsModels.ErrInvalidCredentials:
+		case errors.Is(err, errorsModels.ErrInvalidCredentials):
 			statusCode = http.StatusUnauthorized
 			errMsg = "Invalid credentials"
-		case errorsModels.ErrServer:
+		case errors.Is(err, errorsModels.ErrServer):
 			statusCode = http.StatusInternalServerError
 			errMsg = "Server error"
 		default:
@@ -72,11 +73,11 @@ func (h *authHandler) Register(c *fiber.Ctx) error {
 		var statusCode int
 		var errMsg string
 
-		switch err {
-		case errorsModels.ErrUserExists:
+		switch {
+		case errors.Is(err, errorsModels.ErrUserExists):
 			statusCode = http.StatusConflict
 			errMsg = "User with this login already exist"
-		case errorsModels.ErrServer:
+		case errors.Is(err, errorsModels.ErrServer):
 			statusCode = http.StatusInternalServerError
 			errMsg = "Server error"
 		default:

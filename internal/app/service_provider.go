@@ -2,11 +2,11 @@ package app
 
 import (
 	"sad/internal/config"
-	database "sad/internal/db"
+	"sad/internal/db"
 	"sad/internal/handlers/auth"
 	"sad/internal/handlers/groups"
 	"sad/internal/handlers/subjects"
-	users "sad/internal/handlers/user"
+	"sad/internal/handlers/user"
 	"sad/internal/repositories"
 	groupsRepository "sad/internal/repositories/groups"
 	subjectsRepository "sad/internal/repositories/subjects"
@@ -47,14 +47,14 @@ type serviceProvider struct {
 }
 
 func newServiceProvider(config config.Config) (*serviceProvider, error) {
-	db, err := database.NewDBConnection(config)
+	database, err := db.NewDBConnection(config)
 
 	if err != nil {
 		return nil, err
 	}
 
 	return &serviceProvider{
-		db: db,
+		db: database,
 	}, nil
 }
 
@@ -114,7 +114,7 @@ func (s *serviceProvider) SubjectsService() services.SubjectsService {
 	return s.subjectsService
 }
 
-func (s *serviceProvider) AuthHandler() auth.AuthHandler {
+func (s *serviceProvider) NewAuthHandler() auth.AuthHandler {
 	if s.authHandler == nil {
 		s.authHandler = auth.NewAuthHandler(s.AuthService())
 	}
@@ -122,7 +122,7 @@ func (s *serviceProvider) AuthHandler() auth.AuthHandler {
 	return s.authHandler
 }
 
-func (s *serviceProvider) UserHandler() users.UserHandler {
+func (s *serviceProvider) NewUserHandler() users.UserHandler {
 	if s.userHandler == nil {
 		s.userHandler = users.NewUserHandler(s.UserService())
 	}
@@ -130,7 +130,7 @@ func (s *serviceProvider) UserHandler() users.UserHandler {
 	return s.userHandler
 }
 
-func (s *serviceProvider) GroupsHandler() groups.GroupsHandler {
+func (s *serviceProvider) NewGroupsHandler() groups.GroupsHandler {
 	if s.groupsHandler == nil {
 		s.groupsHandler = groups.NewGroupsHandler(s.GroupsService())
 	}
@@ -138,7 +138,7 @@ func (s *serviceProvider) GroupsHandler() groups.GroupsHandler {
 	return s.groupsHandler
 }
 
-func (s *serviceProvider) SubjectsHandler() subjects.SubjectsHandler {
+func (s *serviceProvider) NewSubjectsHandler() subjects.SubjectsHandler {
 	if s.subjectsHandler == nil {
 		s.subjectsHandler = subjects.NewSubjectsHandler(s.SubjectsService())
 	}

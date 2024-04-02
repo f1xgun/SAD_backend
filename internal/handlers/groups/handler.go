@@ -1,14 +1,15 @@
 package groups
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"sad/internal/services"
 
 	"github.com/gofiber/fiber/v2"
 
-	errorsModels "sad/internal/models/errors"
-	groupsModels "sad/internal/models/groups"
+	"sad/internal/models/errors"
+	"sad/internal/models/groups"
 )
 
 type GroupsHandler interface {
@@ -43,11 +44,11 @@ func (h *groupsHandler) Create(c *fiber.Ctx) error {
 	if err != nil {
 		var status int
 		var errMsg string
-		switch err {
-		case errorsModels.ErrGroupExists:
+		switch {
+		case errors.Is(err, errorsModels.ErrGroupExists):
 			status = http.StatusConflict
 			errMsg = "Group with this number already exist"
-		case errorsModels.ErrServer:
+		case errors.Is(err, errorsModels.ErrServer):
 			status = http.StatusInternalServerError
 			errMsg = "Server error"
 		default:
@@ -66,8 +67,8 @@ func (h *groupsHandler) Get(c *fiber.Ctx) error {
 	if err != nil {
 		log.Printf("Failed to retrieve group: %v", err)
 		var status int
-		switch err {
-		case errorsModels.ErrGroupDoesNotExist:
+		switch {
+		case errors.Is(err, errorsModels.ErrGroupDoesNotExist):
 			status = http.StatusNotFound
 		default:
 			status = http.StatusInternalServerError
@@ -99,9 +100,11 @@ func (h *groupsHandler) AddUserToGroup(c *fiber.Ctx) error {
 	if err != nil {
 		log.Printf("Failed to add user to group: %v", err)
 		var status int
-		switch err {
-		case errorsModels.ErrUserExists, errorsModels.ErrGroupDoesNotExist:
+		switch {
+		case errors.Is(err, errorsModels.ErrUserExists):
 			status = http.StatusConflict
+		case errors.Is(err, errorsModels.ErrGroupDoesNotExist):
+			status = http.StatusNotFound
 		default:
 			status = http.StatusInternalServerError
 		}
@@ -123,8 +126,10 @@ func (h *groupsHandler) DeleteUserFromGroup(c *fiber.Ctx) error {
 	if err != nil {
 		log.Printf("Failed to delete user from group: %v", err)
 		var status int
-		switch err {
-		case errorsModels.ErrGroupDoesNotExist, errorsModels.ErrUserNotInGroup:
+		switch {
+		case errors.Is(err, errorsModels.ErrGroupDoesNotExist):
+			status = http.StatusNotFound
+		case errors.Is(err, errorsModels.ErrUserNotInGroup):
 			status = http.StatusNotFound
 		default:
 			status = http.StatusInternalServerError
@@ -140,8 +145,8 @@ func (h *groupsHandler) Delete(c *fiber.Ctx) error {
 	if err != nil {
 		log.Printf("Failed to delete group: %v", err)
 		var status int
-		switch err {
-		case errorsModels.ErrGroupDoesNotExist:
+		switch {
+		case errors.Is(err, errorsModels.ErrGroupDoesNotExist):
 			status = http.StatusNotFound
 		default:
 			status = http.StatusInternalServerError
@@ -162,11 +167,11 @@ func (h *groupsHandler) Update(c *fiber.Ctx) error {
 	if err != nil {
 		var status int
 		var errMsg string
-		switch err {
-		case errorsModels.ErrGroupExists:
+		switch {
+		case errors.Is(err, errorsModels.ErrGroupExists):
 			status = http.StatusConflict
 			errMsg = "Group with this number already exist"
-		case errorsModels.ErrServer:
+		case errors.Is(err, errorsModels.ErrServer):
 			status = http.StatusInternalServerError
 			errMsg = "Server error"
 		default:
@@ -185,8 +190,8 @@ func (h *groupsHandler) GetWithDetails(c *fiber.Ctx) error {
 	if err != nil {
 		log.Printf("Failed to retrieve group: %v", err)
 		var status int
-		switch err {
-		case errorsModels.ErrGroupDoesNotExist:
+		switch {
+		case errors.Is(err, errorsModels.ErrGroupDoesNotExist):
 			status = http.StatusNotFound
 		default:
 			status = http.StatusInternalServerError

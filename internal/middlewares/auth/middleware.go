@@ -5,14 +5,14 @@ import (
 	"log"
 	"net/http"
 	"sad/internal/config"
-	authModels "sad/internal/models/auth"
+	"sad/internal/models/auth"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func AuthMiddleware(config config.Config) fiber.Handler {
+func NewAuthMiddleware(config config.Config) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var tokenString string
 		authorization := c.Get("Authorization")

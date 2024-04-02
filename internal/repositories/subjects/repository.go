@@ -1,8 +1,9 @@
 package subjects
 
 import (
+	"errors"
 	"log"
-	subjectsModels "sad/internal/models/subjects"
+	"sad/internal/models/subjects"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5"
@@ -77,7 +78,7 @@ func (r *repository) GetById(c *fiber.Ctx, subjectId string) (*subjectsModels.Su
 
 	subject := &subjectsModels.SubjectRepoModel{}
 	err := row.Scan(&subject.Id, &subject.Name)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		log.Printf("Subject not found with id: %s", subjectId)
 		return nil, nil
 	} else if err != nil {

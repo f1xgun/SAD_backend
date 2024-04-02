@@ -2,6 +2,7 @@ package groups
 
 import (
 	"database/sql"
+	"errors"
 	"log"
 	groupsModels "sad/internal/models/groups"
 	usersModels "sad/internal/models/users"
@@ -46,7 +47,7 @@ func (r *repository) GetById(c *fiber.Ctx, groupId string) (*groupsModels.GroupR
 
 	group := &groupsModels.GroupRepoModel{}
 	err := row.Scan(&group.Id, &group.Number)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		log.Printf("Group not found with id: %s", groupId)
 		return nil, nil
 	} else if err != nil {

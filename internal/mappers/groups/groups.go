@@ -1,9 +1,9 @@
 package groupsMapper
 
 import (
-	usersMapper "sad/internal/mappers/users"
-	groupsModels "sad/internal/models/groups"
-	usersModels "sad/internal/models/users"
+	"sad/internal/mappers/users"
+	"sad/internal/models/groups"
+	"sad/internal/models/users"
 )
 
 func FromGroupWithUsersRepoModelToEntity(repoModel groupsModels.GroupWithUsersRepo) groupsModels.GroupWithUsers {

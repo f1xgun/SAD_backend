@@ -4,11 +4,11 @@ import (
 	"errors"
 	"log"
 	"sad/internal/config"
-	errorsModels "sad/internal/models/errors"
-	usersModels "sad/internal/models/users"
+	"sad/internal/models/errors"
+	"sad/internal/models/users"
 	"time"
 
-	authModels "sad/internal/models/auth"
+	"sad/internal/models/auth"
 	"sad/internal/repositories"
 	"sad/internal/utils"
 
@@ -94,7 +94,8 @@ func (s *service) Register(c *fiber.Ctx, user authModels.UserRegistrationRequest
 	}
 
 	if err := s.userRepository.Create(c, newUser); err != nil {
-		if pgErr, ok := err.(*pgconn.PgError); ok {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
 			switch pgErr.Code {
 			case errorsModels.NeedUniqueValueErrCode:
 				log.Printf("User with login '%s' already exists", user.Login)
@@ -103,9 +104,6 @@ func (s *service) Register(c *fiber.Ctx, user authModels.UserRegistrationRequest
 				log.Printf("Error creating user '%s' in the repository: %s", newUser.Login, err.Error())
 				return "", errorsModels.ErrServer
 			}
-		} else {
-			log.Printf("Error creating user '%s' in the repository: %s", newUser.Login, err.Error())
-			return "", errorsModels.ErrServer
 		}
 	}
 

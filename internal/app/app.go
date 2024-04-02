@@ -68,21 +68,21 @@ func (a *App) setupRouter() *fiber.App {
 		Format: "${pid} ${locals:requestid} ${status} - ${method} ${path}\n",
 	}))
 
-	authHandler := a.serviceProvider.AuthHandler()
+	authHandler := a.serviceProvider.NewAuthHandler()
 
 	auth.AuthRoutes(r, authHandler)
 
-	userHandler := a.serviceProvider.UserHandler()
+	userHandler := a.serviceProvider.NewUserHandler()
 
-	usersRoutes.UserRoutes(r, userHandler, middleware.AuthMiddleware(a.config), users.AdminMiddleware(a.serviceProvider.userService))
+	usersRoutes.UserRoutes(r, userHandler, middleware.NewAuthMiddleware(a.config), users.AdminMiddleware(a.serviceProvider.userService))
 
-	groupsHandler := a.serviceProvider.GroupsHandler()
+	groupsHandler := a.serviceProvider.NewGroupsHandler()
 
-	groups.GroupsRoutes(r, groupsHandler, middleware.AuthMiddleware(a.config), users.AdminMiddleware(a.serviceProvider.userService))
+	groups.GroupsRoutes(r, groupsHandler, middleware.NewAuthMiddleware(a.config), users.AdminMiddleware(a.serviceProvider.userService))
 
-	subjectsHandler := a.serviceProvider.SubjectsHandler()
+	subjectsHandler := a.serviceProvider.NewSubjectsHandler()
 
-	subjects.SubjectsRoutes(r, subjectsHandler, middleware.AuthMiddleware(a.config), users.AdminMiddleware(a.serviceProvider.userService))
+	subjects.SubjectsRoutes(r, subjectsHandler, middleware.NewAuthMiddleware(a.config), users.AdminMiddleware(a.serviceProvider.userService))
 
 	return r
 }

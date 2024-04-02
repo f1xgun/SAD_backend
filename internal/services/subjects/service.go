@@ -3,15 +3,15 @@ package subjects
 import (
 	"errors"
 	"log"
-	subjectsMappers "sad/internal/mappers/subjects"
+	"sad/internal/mappers/subjects"
 	"sad/internal/repositories"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	errorsModels "sad/internal/models/errors"
-	subjectsModels "sad/internal/models/subjects"
+	"sad/internal/models/errors"
+	"sad/internal/models/subjects"
 )
 
 type service struct {
@@ -39,7 +39,8 @@ func (s *service) Create(c *fiber.Ctx, name string) error {
 	}
 
 	if err := s.subjectsRepository.Create(c, newSubject); err != nil {
-		if pgErr, ok := err.(*pgconn.PgError); ok {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
 			switch pgErr.Code {
 			case errorsModels.NeedUniqueValueErrCode:
 				log.Printf("Subject with name '%s' already exists", newSubject.Name)
@@ -48,9 +49,6 @@ func (s *service) Create(c *fiber.Ctx, name string) error {
 				log.Printf("Error creating subject '%s' in the repository: %s", newSubject.Name, err.Error())
 				return errorsModels.ErrServer
 			}
-		} else {
-			log.Printf("Error creating subject '%s' in the repository: %s", newSubject.Name, err.Error())
-			return errorsModels.ErrServer
 		}
 	}
 
@@ -97,7 +95,8 @@ func (s *service) AddSubjectToGroup(c *fiber.Ctx, subjectId string, groupId stri
 	}
 
 	if err := s.subjectsRepository.AddSubjectToGroup(c, subjectId, groupId); err != nil {
-		if pgErr, ok := err.(*pgconn.PgError); ok {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
 			switch pgErr.Code {
 			case errorsModels.NeedUniqueValueErrCode:
 				log.Printf("Subject '%s' already exists in group '%s'.", subjectId, groupId)
@@ -106,9 +105,6 @@ func (s *service) AddSubjectToGroup(c *fiber.Ctx, subjectId string, groupId stri
 				log.Printf("Postgres error while adding subject '%s' to group '%s': %v", subjectId, groupId, err)
 				return errorsModels.ErrServer
 			}
-		} else {
-			log.Printf("Unknown error while adding subject '%s' to group '%s': %v", subjectId, groupId, err)
-			return errorsModels.ErrServer
 		}
 	}
 

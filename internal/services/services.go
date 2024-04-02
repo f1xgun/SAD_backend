@@ -1,13 +1,13 @@
 package services
 
 import (
-	authModels "sad/internal/models/auth"
+	"sad/internal/models/auth"
 
-	usersModels "sad/internal/models/users"
+	"sad/internal/models/users"
 
-	groupsModels "sad/internal/models/groups"
+	"sad/internal/models/groups"
 
-	subjectsModels "sad/internal/models/subjects"
+	"sad/internal/models/subjects"
 
 	"github.com/gofiber/fiber/v2"
 )
