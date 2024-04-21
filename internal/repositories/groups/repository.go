@@ -287,7 +287,6 @@ func (r *repository) GetAvailableNewUsers(c *fiber.Ctx, groupId, login string) (
 		SELECT 1 
 		FROM users_groups ug 
 		WHERE u.uuid = ug.user_id 
-	  	AND ug.group_id = @groupId
 	)
 	`
 
