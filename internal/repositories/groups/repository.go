@@ -93,6 +93,7 @@ func (r *repository) GetAll(c *fiber.Ctx) ([]groupsModels.GroupRepoModel, error)
 }
 
 func (r *repository) AddUserToGroup(c *fiber.Ctx, groupId string, userId string) error {
+	// TODO: check is user already in some group
 	query := "INSERT INTO users_groups (user_id, group_id) VALUES (@user_id, @group_id)"
 	args := pgx.NamedArgs{
 		"user_id":  userId,
@@ -155,7 +156,7 @@ func (r *repository) IsUserInGroup(c *fiber.Ctx, groupId, userId string) (bool, 
 
 func (r *repository) GetByIdWithUsers(c *fiber.Ctx, groupId string) (*groupsModels.GroupWithUsersRepo, error) {
 	query := `
-		SELECT g.id, g.number, u.uuid, u.login, u.name
+		SELECT g.id, g.number, u.uuid, u.login, u.name, u.role
 		FROM groups g
 		LEFT JOIN users_groups ug ON ug.group_id = g.id
 		LEFT JOIN users u ON u.uuid = ug.user_id
@@ -178,7 +179,7 @@ func (r *repository) GetByIdWithUsers(c *fiber.Ctx, groupId string) (*groupsMode
 		var groupId, groupNumber sql.NullString
 		var user usersModels.UserInfoRepoModel
 
-		if err := rows.Scan(&groupId, &groupNumber, &user.Id, &user.Login, &user.Name); err != nil {
+		if err := rows.Scan(&groupId, &groupNumber, &user.Id, &user.Login, &user.Name, &user.Role); err != nil {
 			log.Printf("Error scanning group: %v", err)
 			continue
 		}

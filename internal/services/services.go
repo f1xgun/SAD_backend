@@ -19,9 +19,11 @@ type AuthService interface {
 }
 
 type UserService interface {
-	EditRole(c *fiber.Ctx, userId string, newRole usersModels.UserRole) error
+	EditUser(c *fiber.Ctx, userId string, newRole usersModels.UserRole, newName string) error
 	CheckIsUserRoleAllowed(c *fiber.Ctx, allowedRoles []usersModels.UserRole, userId string) (bool, error)
 	GetUserInfo(c *fiber.Ctx, userId string) (*usersModels.UserInfo, error)
+	GetUsersInfo(c *fiber.Ctx) ([]usersModels.UserInfo, error)
+	DeleteUser(c *fiber.Ctx, userId string) error
 }
 
 type GroupsService interface {

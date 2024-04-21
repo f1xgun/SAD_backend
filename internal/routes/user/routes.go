@@ -7,8 +7,12 @@ import (
 )
 
 func UserRoutes(r *fiber.App, handler users.UserHandler, authMiddleware interface{}, allowedRolesMiddleware interface{}) {
-	userApi := r.Group("/api/users").Use(authMiddleware)
+	usersApi := r.Group("/api/users").Use(authMiddleware)
+	usersApi.Get("/list", handler.GetUsers)
+	usersApi.Get("/info", handler.GetUserInfoByToken)
 
+	userApi := usersApi.Group("/:user_id")
 	userApi.Get("/info", handler.GetUserInfo)
-	userApi.Patch("/:user_id/role", handler.EditRole).Use(allowedRolesMiddleware)
+	userApi.Patch("/edit", handler.EditUser).Use(allowedRolesMiddleware)
+	userApi.Delete("/", handler.DeleteUser).Use(allowedRolesMiddleware)
 }

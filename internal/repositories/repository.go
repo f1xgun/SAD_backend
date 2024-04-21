@@ -13,9 +13,11 @@ type UserRepository interface {
 	GetById(c *fiber.Ctx, userId string) (*usersModels.UserCredentials, error)
 	GetByLogin(c *fiber.Ctx, login string) (*usersModels.UserRepoModel, error)
 	Create(c *fiber.Ctx, user usersModels.User) error
-	ChangeUserRole(c *fiber.Ctx, userId string, newRole usersModels.UserRole) error
+	ChangeUserInfo(c *fiber.Ctx, userId string, newRole usersModels.UserRole, newName string) error
 	CheckUserExists(c *fiber.Ctx, userId string) (bool, error)
 	GetUserInfo(c *fiber.Ctx, userId string) (*usersModels.UserInfoRepoModel, error)
+	GetUsersInfo(c *fiber.Ctx) ([]usersModels.UserInfoRepoModel, error)
+	DeleteUser(c *fiber.Ctx, userId string) error
 }
 
 type GroupsRepository interface {

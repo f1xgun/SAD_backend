@@ -84,19 +84,20 @@ func (r *repository) Create(c *fiber.Ctx, user usersModels.User) error {
 	return err
 }
 
-func (r *repository) ChangeUserRole(c *fiber.Ctx, userId string, newRole usersModels.UserRole) error {
-	query := "UPDATE users SET role=@role WHERE uuid=@uuid"
-	log.Printf("Changing user role for userId: %s to new role: %#v", userId, newRole)
+func (r *repository) ChangeUserInfo(c *fiber.Ctx, userId string, newRole usersModels.UserRole, newName string) error {
+	query := "UPDATE users SET role=@role, name=@name WHERE uuid=@uuid"
+	log.Printf("Changing user info for userId: %s to new role: %#v and new name: %#v", userId, newRole, newName)
 
 	args := pgx.NamedArgs{
 		"role": newRole,
 		"uuid": userId,
+		"name": newName,
 	}
 	_, err := r.db.Exec(c.Context(), query, args)
 	if err != nil {
-		log.Printf("Error changing user role for userId: %s, error: %v", userId, err)
+		log.Printf("Error changing user info for userId: %s, error: %v", userId, err)
 	} else {
-		log.Printf("User role changed successfully for userId: %s", userId)
+		log.Printf("User info changed successfully for userId: %s", userId)
 	}
 
 	return err
@@ -130,4 +131,66 @@ func (r *repository) GetUserInfo(c *fiber.Ctx, userId string) (*usersModels.User
 
 	log.Printf("User fetched successfully by id: %s", userId)
 	return userInfo, nil
+}
+
+func (r *repository) GetUsersInfo(c *fiber.Ctx) ([]usersModels.UserInfoRepoModel, error) {
+	query := "SELECT uuid, name, login, role FROM users"
+	log.Printf("Fetching users")
+
+	rows, err := r.db.Query(c.Context(), query)
+	if err != nil {
+		log.Printf("Error fetching users: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var usersInfo []usersModels.UserInfoRepoModel
+	for rows.Next() {
+		var userInfo usersModels.UserInfoRepoModel
+
+		if err := rows.Scan(&userInfo.Id, &userInfo.Name, &userInfo.Login, &userInfo.Role); err != nil {
+			log.Printf("Error scaning user: %v", err)
+			continue
+		}
+
+		if userInfo.Id.Valid {
+			usersInfo = append(usersInfo, userInfo)
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		log.Printf("Error iterating over users: %v", err)
+		return nil, err
+	}
+
+	log.Printf("Users info fetched successfully by")
+	return usersInfo, nil
+}
+
+func (r *repository) DeleteUser(c *fiber.Ctx, userId string) error {
+	tx, err := r.db.Begin(c.Context())
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err != nil {
+			if rbErr := tx.Rollback(c.Context()); rbErr != nil {
+				log.Printf("Error rolling back transaction: %v", rbErr)
+			}
+		}
+	}()
+
+	query := "DELETE FROM users WHERE uuid=$1"
+
+	if _, err = tx.Exec(c.Context(), query, userId); err != nil {
+		log.Printf("Error deleting user with id %s, err %v", userId, err)
+		return err
+	}
+
+	if err = tx.Commit(c.Context()); err != nil {
+		return err
+	}
+
+	return nil
 }
