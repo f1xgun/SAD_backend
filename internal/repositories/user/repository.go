@@ -2,20 +2,22 @@ package users
 
 import (
 	"errors"
-	"github.com/gofiber/fiber/v2"
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	usersModels "sad/internal/models/users"
 	def "sad/internal/repositories"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/jackc/pgx/v5"
 )
 
 var _ def.UserRepository = (*repository)(nil)
 
 type repository struct {
-	db *pgx.Conn
+	db *pgxpool.Pool
 }
 
-func NewRepository(db *pgx.Conn) *repository {
+func NewRepository(db *pgxpool.Pool) *repository {
 	return &repository{
 		db: db,
 	}
@@ -63,7 +65,7 @@ func (r *repository) GetByLogin(c *fiber.Ctx, login string) (*usersModels.UserRe
 
 func (r *repository) Create(c *fiber.Ctx, user usersModels.User) error {
 	query := "INSERT INTO users (uuid, name, login, password, role) VALUES (@uuid, @name, @login, @password, @role)"
-	log.Printf("Creating user: %v", user)
+	log.Printf("Creating user: %#v", user)
 
 	args := pgx.NamedArgs{
 		"uuid":     user.Id,
@@ -74,9 +76,9 @@ func (r *repository) Create(c *fiber.Ctx, user usersModels.User) error {
 	}
 	_, err := r.db.Exec(c.Context(), query, args)
 	if err != nil {
-		log.Printf("Error creating user: %v, error: %v", user, err)
+		log.Printf("Error creating user: %#v, error: %v", user, err)
 	} else {
-		log.Printf("User created successfully: %v", user)
+		log.Printf("User created successfully: %#v", user)
 	}
 
 	return err
@@ -84,7 +86,7 @@ func (r *repository) Create(c *fiber.Ctx, user usersModels.User) error {
 
 func (r *repository) ChangeUserRole(c *fiber.Ctx, userId string, newRole usersModels.UserRole) error {
 	query := "UPDATE users SET role=@role WHERE uuid=@uuid"
-	log.Printf("Changing user role for userId: %s to new role: %v", userId, newRole)
+	log.Printf("Changing user role for userId: %s to new role: %#v", userId, newRole)
 
 	args := pgx.NamedArgs{
 		"role": newRole,
@@ -108,4 +110,24 @@ func (r *repository) CheckUserExists(c *fiber.Ctx, userId string) (bool, error) 
 		return false, err
 	}
 	return count > 0, nil
+}
+
+func (r *repository) GetUserInfo(c *fiber.Ctx, userId string) (*usersModels.UserInfoRepoModel, error) {
+	query := "SELECT uuid, name, login, role FROM users WHERE uuid=$1"
+	log.Printf("Fetching user by id: %s", userId)
+
+	row := r.db.QueryRow(c.Context(), query, userId)
+
+	userInfo := &usersModels.UserInfoRepoModel{}
+	err := row.Scan(&userInfo.Id, &userInfo.Name, &userInfo.Login, &userInfo.Role)
+	if errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("User not found with id: %s", userId)
+		return nil, nil
+	} else if err != nil {
+		log.Printf("Error fetching user by id: %s, error: %v", userId, err)
+		return nil, err
+	}
+
+	log.Printf("User fetched successfully by id: %s", userId)
+	return userInfo, nil
 }

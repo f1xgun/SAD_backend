@@ -4,11 +4,11 @@ import (
 	"errors"
 	"log"
 	"sad/internal/config"
-	"sad/internal/models/errors"
-	"sad/internal/models/users"
+	errorsModels "sad/internal/models/errors"
+	usersModels "sad/internal/models/users"
 	"time"
 
-	"sad/internal/models/auth"
+	authModels "sad/internal/models/auth"
 	"sad/internal/repositories"
 	"sad/internal/utils"
 

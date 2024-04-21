@@ -9,10 +9,16 @@ type Subject struct {
 
 type SubjectGroup struct {
 	SubjectId string `json:"subject_id"`
+	TeacherId string `json:"teacher_id"`
 	GroupId   string `json:"group_id"`
 }
 
 type SubjectRepoModel struct {
 	Id   sql.NullString
 	Name sql.NullString
+}
+
+type SubjectGroupRepoModel struct {
+	SubjectId sql.NullString
+	GroupId   sql.NullString
 }

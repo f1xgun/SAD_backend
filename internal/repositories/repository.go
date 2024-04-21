@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	gradesModels "sad/internal/models/grades"
 	groupsModels "sad/internal/models/groups"
 	subjectsModels "sad/internal/models/subjects"
 	usersModels "sad/internal/models/users"
@@ -14,6 +15,7 @@ type UserRepository interface {
 	Create(c *fiber.Ctx, user usersModels.User) error
 	ChangeUserRole(c *fiber.Ctx, userId string, newRole usersModels.UserRole) error
 	CheckUserExists(c *fiber.Ctx, userId string) (bool, error)
+	GetUserInfo(c *fiber.Ctx, userId string) (*usersModels.UserInfoRepoModel, error)
 }
 
 type GroupsRepository interface {
@@ -27,6 +29,7 @@ type GroupsRepository interface {
 	DeleteGroup(c *fiber.Ctx, groupId string) error
 	UpdateGroup(c *fiber.Ctx, group groupsModels.Group) error
 	CheckGroupExists(c *fiber.Ctx, groupId string) (bool, error)
+	GetAvailableNewUsers(c *fiber.Ctx, groupId, login string) ([]usersModels.UserInfoRepoModel, error)
 }
 
 type SubjectsRepository interface {
@@ -34,8 +37,18 @@ type SubjectsRepository interface {
 	GetAll(c *fiber.Ctx) ([]subjectsModels.SubjectRepoModel, error)
 	GetById(c *fiber.Ctx, groupId string) (*subjectsModels.SubjectRepoModel, error)
 	DeleteSubject(c *fiber.Ctx, subjectId string) error
-	AddSubjectToGroup(c *fiber.Ctx, subjectId string, groupId string) error
+	AddSubjectToGroup(c *fiber.Ctx, subjectGroup subjectsModels.SubjectGroup) error
 	DeleteSubjectFromGroup(c *fiber.Ctx, subjectId string, groupId string) error
 	UpdateSubject(c *fiber.Ctx, subject subjectsModels.Subject) error
 	IsSubjectInGroup(c *fiber.Ctx, subjectId, groupId string) (bool, error)
+	GetSubjectTeacherId(c *fiber.Ctx, subjectId, teacherId string) (string, error)
+}
+
+type GradesRepository interface {
+	Create(c *fiber.Ctx, grade gradesModels.Grade) error
+	Delete(c *fiber.Ctx, gradeId string) error
+	Update(c *fiber.Ctx, grade gradesModels.Grade) error
+	GetAllStudentGrades(c *fiber.Ctx, userId string) ([]gradesModels.GradeInfoRepoModel, error)
+	GetById(c *fiber.Ctx, gradeId string) (*gradesModels.GradeRepoModel, error)
+	//GetGroupGradesBySubjectId(c *fiber.Ctx, subjectId string, groupId string) ([]gradesModels.GradeRepoModel, error)
 }

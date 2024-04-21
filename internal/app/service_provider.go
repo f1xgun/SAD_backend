@@ -1,23 +1,25 @@
 package app
 
 import (
+	"github.com/jackc/pgx/v5/pgxpool"
 	"sad/internal/config"
 	"sad/internal/db"
 	"sad/internal/handlers/auth"
+	"sad/internal/handlers/grades"
 	"sad/internal/handlers/groups"
 	"sad/internal/handlers/subjects"
 	"sad/internal/handlers/user"
 	"sad/internal/repositories"
+	gradesRepository "sad/internal/repositories/grades"
 	groupsRepository "sad/internal/repositories/groups"
 	subjectsRepository "sad/internal/repositories/subjects"
 	userRepository "sad/internal/repositories/user"
 	"sad/internal/services"
 	authService "sad/internal/services/auth"
+	gradesService "sad/internal/services/grades"
 	groupsService "sad/internal/services/groups"
 	subjectsService "sad/internal/services/subjects"
 	userService "sad/internal/services/user"
-
-	"github.com/jackc/pgx/v5"
 )
 
 type serviceProvider struct {
@@ -29,11 +31,15 @@ type serviceProvider struct {
 
 	subjectsService services.SubjectsService
 
+	gradesService services.GradesService
+
 	userRepository repositories.UserRepository
 
 	groupsRepository repositories.GroupsRepository
 
 	subjectsRepository repositories.SubjectsRepository
+
+	gradesRepository repositories.GradesRepository
 
 	authHandler auth.AuthHandler
 
@@ -43,7 +49,9 @@ type serviceProvider struct {
 
 	subjectsHandler subjects.SubjectsHandler
 
-	db *pgx.Conn
+	gradesHandler grades.GradesHandler
+
+	db *pgxpool.Pool
 }
 
 func newServiceProvider(config config.Config) (*serviceProvider, error) {
@@ -82,6 +90,14 @@ func (s *serviceProvider) SubjectsRepository() repositories.SubjectsRepository {
 	return s.subjectsRepository
 }
 
+func (s *serviceProvider) GradesRepository() repositories.GradesRepository {
+	if s.gradesRepository == nil {
+		s.gradesRepository = gradesRepository.NewRepository(s.db)
+	}
+
+	return s.gradesRepository
+}
+
 func (s *serviceProvider) AuthService() services.AuthService {
 	if s.authService == nil {
 		s.authService = authService.NewService(s.UserRepository())
@@ -108,10 +124,22 @@ func (s *serviceProvider) GroupsService() services.GroupsService {
 
 func (s *serviceProvider) SubjectsService() services.SubjectsService {
 	if s.subjectsService == nil {
-		s.subjectsService = subjectsService.NewService(s.GroupsRepository(), s.SubjectsRepository())
+		s.subjectsService = subjectsService.NewService(
+			s.GroupsRepository(),
+			s.SubjectsRepository(),
+			s.UserRepository(),
+		)
 	}
 
 	return s.subjectsService
+}
+
+func (s *serviceProvider) GradesService() services.GradesService {
+	if s.gradesService == nil {
+		s.gradesService = gradesService.NewService(s.GradesRepository(), s.UserRepository())
+	}
+
+	return s.gradesService
 }
 
 func (s *serviceProvider) NewAuthHandler() auth.AuthHandler {
@@ -144,4 +172,12 @@ func (s *serviceProvider) NewSubjectsHandler() subjects.SubjectsHandler {
 	}
 
 	return s.subjectsHandler
+}
+
+func (s *serviceProvider) NewGradesHandler() grades.GradesHandler {
+	if s.gradesHandler == nil {
+		s.gradesHandler = grades.NewGradesHandler(s.GradesService())
+	}
+
+	return s.gradesHandler
 }

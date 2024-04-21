@@ -4,12 +4,11 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	errorsModels "sad/internal/models/errors"
+	subjectsModels "sad/internal/models/subjects"
 	"sad/internal/services"
 
 	"github.com/gofiber/fiber/v2"
-
-	"sad/internal/models/errors"
-	"sad/internal/models/subjects"
 )
 
 type SubjectsHandler interface {
@@ -73,10 +72,9 @@ func (h *subjectsHandler) AddSubjectToGroup(c *fiber.Ctx) error {
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(&fiber.Map{"error": "invalid request body"})
 	}
-	subjectId := c.Params("subject_id")
-	groupId := body.GroupId
+	body.SubjectId = c.Params("subject_id")
 
-	err := h.subjectsService.AddSubjectToGroup(c, subjectId, groupId)
+	err := h.subjectsService.AddSubjectToGroup(c, body)
 
 	if err != nil {
 		log.Printf("Failed to add subject to group: %v", err)
@@ -86,6 +84,8 @@ func (h *subjectsHandler) AddSubjectToGroup(c *fiber.Ctx) error {
 			status = http.StatusNotFound
 		case errors.Is(err, errorsModels.ErrSubjectExists):
 			status = http.StatusConflict
+		//case errors.Is(err, errorsModels.ErrSubjectWithThisTeacherExists):
+		//	status = http.StatusConflict
 		default:
 			status = http.StatusInternalServerError
 		}
@@ -152,6 +152,9 @@ func (h *subjectsHandler) Update(c *fiber.Ctx) error {
 		case errors.Is(err, errorsModels.ErrSubjectExists):
 			status = http.StatusConflict
 			errMsg = "Subject with this number already exist"
+		//case errors.Is(err, errorsModels.ErrSubjectWithThisTeacherExists):
+		//	status = http.StatusConflict
+		//	errMsg = err.Error()
 		case errors.Is(err, errorsModels.ErrServer):
 			status = http.StatusInternalServerError
 			errMsg = "Server error"

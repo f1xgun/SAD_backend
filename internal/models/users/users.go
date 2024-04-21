@@ -9,9 +9,10 @@ type UserCredentials struct {
 }
 
 type UserInfo struct {
-	Id    string `json:"id"`
-	Name  string `json:"name"`
-	Login string `json:"login"`
+	Id    string   `json:"id"`
+	Name  string   `json:"name"`
+	Login string   `json:"login"`
+	Role  UserRole `json:"role,omitempty"`
 }
 
 type User struct {
@@ -32,6 +33,7 @@ type UserInfoRepoModel struct {
 	Id    sql.NullString
 	Name  sql.NullString
 	Login sql.NullString
+	Role  sql.NullString
 }
 
 type UserRole string

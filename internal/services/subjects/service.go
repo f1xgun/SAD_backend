@@ -3,26 +3,33 @@ package subjects
 import (
 	"errors"
 	"log"
-	"sad/internal/mappers/subjects"
+	subjectsMappers "sad/internal/mappers/subjects"
+	usersModels "sad/internal/models/users"
 	"sad/internal/repositories"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"sad/internal/models/errors"
-	"sad/internal/models/subjects"
+	errorsModels "sad/internal/models/errors"
+	subjectsModels "sad/internal/models/subjects"
 )
 
 type service struct {
 	groupsRepository   repositories.GroupsRepository
 	subjectsRepository repositories.SubjectsRepository
+	usersRepository    repositories.UserRepository
 }
 
-func NewService(groupsRepository repositories.GroupsRepository, subjectsRepository repositories.SubjectsRepository) *service {
+func NewService(
+	groupsRepository repositories.GroupsRepository,
+	subjectsRepository repositories.SubjectsRepository,
+	usersRepository repositories.UserRepository,
+) *service {
 	return &service{
 		groupsRepository:   groupsRepository,
 		subjectsRepository: subjectsRepository,
+		usersRepository:    usersRepository,
 	}
 }
 
@@ -64,51 +71,75 @@ func (s *service) GetAll(c *fiber.Ctx) ([]subjectsModels.Subject, error) {
 	return subjects, err
 }
 
-func (s *service) AddSubjectToGroup(c *fiber.Ctx, subjectId string, groupId string) error {
-	log.Printf("Attempting to add subject with ID '%s' to group '%s'.", subjectId, groupId)
+func (s *service) AddSubjectToGroup(c *fiber.Ctx, subjectGroup subjectsModels.SubjectGroup) error {
+	log.Printf("Attempting to add subject with ID '%s' and teacher with ID '%s' to group '%s'.",
+		subjectGroup.SubjectId, subjectGroup.TeacherId, subjectGroup.GroupId)
 
-	if subjectId == "" {
-		log.Printf("Validation error: subject_id is empty.")
-		return errors.New("subject_id is required")
+	if subjectGroup.GroupId == "" {
+		log.Printf("Validation error: group_id is empty.")
+		return errors.New("group_id is required")
 	}
 
-	group, err := s.subjectsRepository.GetById(c, subjectId)
+	if subjectGroup.TeacherId == "" {
+		log.Printf("Validation error: teacher_id is empty.")
+		return errors.New("teacher_id is required")
+	}
+
+	subject, err := s.subjectsRepository.GetById(c, subjectGroup.SubjectId)
 	if err != nil {
-		log.Printf("Error retrieving subject '%s': %v", subjectId, err)
+		log.Printf("Error retrieving subject '%s': %v", subjectGroup.SubjectId, err)
 		return err
 	}
 
-	if group == nil {
-		log.Printf("Subject '%s' does not exist.", subjectId)
+	if subject == nil {
+		log.Printf("Subject '%s' does not exist.", subjectGroup.SubjectId)
 		return errorsModels.ErrSubjectDoesNotExist
 	}
 
-	groupExist, err := s.groupsRepository.CheckGroupExists(c, groupId)
+	groupExist, err := s.groupsRepository.CheckGroupExists(c, subjectGroup.GroupId)
 	if err != nil {
-		log.Printf("Error checking existence of group '%s': %v", groupId, err)
+		log.Printf("Error checking existence of group '%s': %v", subjectGroup.GroupId, err)
 		return err
 	}
 
 	if !groupExist {
-		log.Printf("Group '%s' does not exist.", groupId)
+		log.Printf("Group '%s' does not exist.", subjectGroup.GroupId)
 		return errorsModels.ErrGroupDoesNotExist
 	}
 
-	if err := s.subjectsRepository.AddSubjectToGroup(c, subjectId, groupId); err != nil {
+	teacherExist, err := s.usersRepository.GetById(c, subjectGroup.TeacherId)
+
+	if err != nil {
+		log.Printf("Error checking existence of teacher '%s': %v", subjectGroup.TeacherId, err)
+		return err
+	}
+
+	if teacherExist == nil {
+		log.Printf("Teacher '%s' does not exist", subjectGroup.TeacherId)
+		return errorsModels.ErrUserDoesNotExist
+	}
+
+	if teacherExist.Role != usersModels.Teacher {
+		log.Printf("User with ID '%s' is not teacher", subjectGroup.TeacherId)
+		return errorsModels.ErrNoPermission
+	}
+
+	if err := s.subjectsRepository.AddSubjectToGroup(c, subjectGroup); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			switch pgErr.Code {
 			case errorsModels.NeedUniqueValueErrCode:
-				log.Printf("Subject '%s' already exists in group '%s'.", subjectId, groupId)
+				log.Printf("Subject '%s' already exists in group '%s'.", subjectGroup.SubjectId, subjectGroup.GroupId)
 				return errorsModels.ErrSubjectExists
 			default:
-				log.Printf("Postgres error while adding subject '%s' to group '%s': %v", subjectId, groupId, err)
+				log.Printf("Postgres error while adding subject '%s' to group '%s': %v",
+					subjectGroup.SubjectId, subjectGroup.GroupId, err)
 				return errorsModels.ErrServer
 			}
 		}
 	}
 
-	log.Printf("Subject '%s' successfully added to group '%s'.", subjectId, groupId)
+	log.Printf("Subject '%s' successfully added to group '%s'.", subjectGroup.SubjectId, subjectGroup.GroupId)
 	return nil
 }
 

@@ -13,6 +13,7 @@ import (
 
 type UserHandler interface {
 	EditRole(c *fiber.Ctx) error
+	GetUserInfo(c *fiber.Ctx) error
 }
 
 type userHandler struct {
@@ -56,4 +57,30 @@ func (h *userHandler) EditRole(c *fiber.Ctx) error {
 	}
 
 	return c.SendStatus(http.StatusOK)
+}
+
+func (h *userHandler) GetUserInfo(c *fiber.Ctx) error {
+	userID, ok := c.Locals("userID").(string)
+	if !ok {
+		log.Println("Failed to assert type for userID from Locals")
+		return c.SendStatus(http.StatusBadRequest)
+	}
+
+	userInfo, err := h.userService.GetUserInfo(c, userID)
+	if err != nil {
+		var statusCode int
+		var errMsg string
+		switch {
+		case errors.Is(err, errorsModels.ErrUserNotFound):
+			statusCode = http.StatusNotFound
+			errMsg = "User with this id does not exist"
+		default:
+			statusCode = http.StatusInternalServerError
+			errMsg = err.Error()
+		}
+		log.Printf("Error occurred while fetching user info: %s", errMsg)
+		return c.Status(statusCode).JSON(&fiber.Map{"error": errMsg})
+	}
+
+	return c.Status(http.StatusOK).JSON(userInfo)
 }

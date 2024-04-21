@@ -3,15 +3,17 @@ package groups
 import (
 	"errors"
 	"log"
+	usersMapper "sad/internal/mappers/users"
+	usersModels "sad/internal/models/users"
 	"sad/internal/repositories"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"sad/internal/mappers/groups"
-	"sad/internal/models/errors"
-	"sad/internal/models/groups"
+	groupsMapper "sad/internal/mappers/groups"
+	errorsModels "sad/internal/models/errors"
+	groupsModels "sad/internal/models/groups"
 )
 
 type service struct {
@@ -101,9 +103,14 @@ func (s *service) GetAll(c *fiber.Ctx) ([]groupsModels.Group, error) {
 	log.Println("Retrieving all groups")
 	groupsRepo, err := s.groupsRepository.GetAll(c)
 
+	if err != nil {
+		log.Printf("Error retrieving all groups")
+		return nil, err
+	}
+
 	groups := groupsMapper.FromGroupsRepoModelToEntity(groupsRepo)
 
-	return groups, err
+	return groups, nil
 }
 
 func (s *service) AddUserToGroup(c *fiber.Ctx, groupId string, userId string) error {
@@ -241,4 +248,17 @@ func (s *service) UpdateGroup(c *fiber.Ctx, groupId string, group groupsModels.G
 
 	log.Printf("Group '%s' successfully updated.", groupId)
 	return nil
+}
+
+func (s *service) GetAvailableNewUsers(c *fiber.Ctx, groupId, login string) ([]usersModels.UserInfo, error) {
+	log.Printf("Attempting to get available new users for group with id %s and login %s", groupId, login)
+	usersRepo, err := s.groupsRepository.GetAvailableNewUsers(c, groupId, login)
+	if err != nil {
+		log.Printf("Error get available new users for group with id %s and login %s", groupId, login)
+		return nil, err
+	}
+
+	users := usersMapper.UsersInfoFromRepoToService(usersRepo)
+
+	return users, nil
 }

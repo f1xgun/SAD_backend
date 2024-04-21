@@ -1,20 +1,21 @@
 package app
 
 import (
-	"context"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 	"log"
 	"sad/internal/config"
 	middleware "sad/internal/middlewares/auth"
 	"sad/internal/middlewares/users"
+	usersModels "sad/internal/models/users"
 	"sad/internal/routes/auth"
+	"sad/internal/routes/grades"
 	"sad/internal/routes/groups"
 	"sad/internal/routes/subjects"
 	usersRoutes "sad/internal/routes/user"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
-	"github.com/gofiber/fiber/v2/middleware/requestid"
 )
 
 type App struct {
@@ -56,6 +57,7 @@ func (a *App) initDeps() {
 func (a *App) setupRouter() *fiber.App {
 	r := fiber.New()
 
+	r.Use(cors.New())
 	r.Use(recover.New(recover.Config{
 		EnableStackTrace: true,
 		StackTraceHandler: func(c *fiber.Ctx, e interface{}) {
@@ -63,10 +65,7 @@ func (a *App) setupRouter() *fiber.App {
 			c.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
 		},
 	}))
-	r.Use(requestid.New())
-	r.Use(logger.New(logger.Config{
-		Format: "${pid} ${locals:requestid} ${status} - ${method} ${path}\n",
-	}))
+	r.Use(logger.New())
 
 	authHandler := a.serviceProvider.NewAuthHandler()
 
@@ -74,15 +73,39 @@ func (a *App) setupRouter() *fiber.App {
 
 	userHandler := a.serviceProvider.NewUserHandler()
 
-	usersRoutes.UserRoutes(r, userHandler, middleware.NewAuthMiddleware(a.config), users.AdminMiddleware(a.serviceProvider.userService))
+	usersRoutes.UserRoutes(
+		r,
+		userHandler,
+		middleware.NewAuthMiddleware(a.config),
+		users.AllowedRoleMiddleware(a.serviceProvider.userService, []usersModels.UserRole{usersModels.Admin}),
+	)
 
 	groupsHandler := a.serviceProvider.NewGroupsHandler()
 
-	groups.GroupsRoutes(r, groupsHandler, middleware.NewAuthMiddleware(a.config), users.AdminMiddleware(a.serviceProvider.userService))
+	groups.GroupsRoutes(
+		r,
+		groupsHandler,
+		middleware.NewAuthMiddleware(a.config),
+		users.AllowedRoleMiddleware(a.serviceProvider.userService, []usersModels.UserRole{usersModels.Admin}),
+	)
 
 	subjectsHandler := a.serviceProvider.NewSubjectsHandler()
 
-	subjects.SubjectsRoutes(r, subjectsHandler, middleware.NewAuthMiddleware(a.config), users.AdminMiddleware(a.serviceProvider.userService))
+	subjects.SubjectsRoutes(
+		r,
+		subjectsHandler,
+		middleware.NewAuthMiddleware(a.config),
+		users.AllowedRoleMiddleware(a.serviceProvider.userService, []usersModels.UserRole{usersModels.Admin}),
+	)
+
+	gradesHandler := a.serviceProvider.NewGradesHandler()
+
+	grades.GradesRoutes(
+		r,
+		gradesHandler,
+		middleware.NewAuthMiddleware(a.config),
+		users.AllowedRoleMiddleware(a.serviceProvider.userService, []usersModels.UserRole{usersModels.Admin, usersModels.Teacher}),
+	)
 
 	return r
 }
@@ -92,7 +115,6 @@ func (a *App) Run() error {
 	return err
 }
 
-func (a *App) CloseDBConnection() error {
-	err := a.serviceProvider.db.Close(context.Background())
-	return err
+func (a *App) CloseDBConnection() {
+	a.serviceProvider.db.Close()
 }

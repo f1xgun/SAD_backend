@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 	"sad/internal/config"
-	"sad/internal/models/auth"
+	authModels "sad/internal/models/auth"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"

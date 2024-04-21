@@ -2,8 +2,9 @@ package users
 
 import (
 	"log"
-	"sad/internal/models/errors"
-	"sad/internal/models/users"
+	usersMapper "sad/internal/mappers/users"
+	errorsModels "sad/internal/models/errors"
+	usersModels "sad/internal/models/users"
 	"sad/internal/repositories"
 
 	"github.com/gofiber/fiber/v2"
@@ -53,18 +54,31 @@ func (s *service) EditRole(c *fiber.Ctx, userId string, newRole usersModels.User
 	return err
 }
 
-func (s *service) CheckUserIsAdmin(c *fiber.Ctx) (bool, error) {
-	adminID, ok := c.Locals("userID").(string)
-	if !ok {
-		log.Println("Failed to assert type for userID from Locals")
-		return false, errorsModels.ErrServer
-	}
-
-	admin, err := s.userRepository.GetById(c, adminID)
+func (s *service) CheckIsUserRoleAllowed(c *fiber.Ctx, allowedRoles []usersModels.UserRole, userId string) (bool, error) {
+	user, err := s.userRepository.GetById(c, userId)
 	if err != nil {
-		log.Printf("Error fetching admin data: %v", err)
+		log.Printf("Error fetching user data: %v", err)
 		return false, err
 	}
 
-	return admin.Role == usersModels.Admin, nil
+	for _, allowedRole := range allowedRoles {
+		if user.Role == allowedRole {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func (s *service) GetUserInfo(c *fiber.Ctx, userId string) (*usersModels.UserInfo, error) {
+	userRepoInfo, err := s.userRepository.GetUserInfo(c, userId)
+
+	if err != nil {
+		log.Printf("Error fetching user info: %v", err)
+		return nil, err
+	}
+
+	user := usersMapper.UserInfoFromRepoToService(*userRepoInfo)
+
+	return &user, nil
 }

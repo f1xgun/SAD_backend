@@ -8,8 +8,8 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"sad/internal/models/errors"
-	"sad/internal/models/groups"
+	errorsModels "sad/internal/models/errors"
+	groupsModels "sad/internal/models/groups"
 )
 
 type GroupsHandler interface {
@@ -21,6 +21,7 @@ type GroupsHandler interface {
 	AddUserToGroup(c *fiber.Ctx) error
 	DeleteUserFromGroup(c *fiber.Ctx) error
 	Update(c *fiber.Ctx) error
+	GetAvailableNewUsers(c *fiber.Ctx) error
 }
 
 type groupsHandler struct {
@@ -84,7 +85,7 @@ func (h *groupsHandler) GetAll(c *fiber.Ctx) error {
 		log.Printf("Failed to retrieve groups: %v", err)
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(groups)
+	return c.Status(http.StatusOK).JSON(groups)
 }
 
 func (h *groupsHandler) AddUserToGroup(c *fiber.Ctx) error {
@@ -114,12 +115,8 @@ func (h *groupsHandler) AddUserToGroup(c *fiber.Ctx) error {
 }
 
 func (h *groupsHandler) DeleteUserFromGroup(c *fiber.Ctx) error {
-	var body groupsModels.UserGroup
-	if err := c.BodyParser(&body); err != nil {
-		return c.Status(http.StatusBadRequest).JSON(&fiber.Map{"error": "invalid request body"})
-	}
 	groupId := c.Params("group_id")
-	userId := body.UserId
+	userId := c.Params("user_id")
 
 	err := h.groupsService.DeleteUserFromGroup(c, groupId, userId)
 
@@ -198,5 +195,25 @@ func (h *groupsHandler) GetWithDetails(c *fiber.Ctx) error {
 		}
 		return c.Status(status).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(group)
+	return c.Status(http.StatusOK).JSON(group)
+}
+
+func (h *groupsHandler) GetAvailableNewUsers(c *fiber.Ctx) error {
+	groupId := c.Params("group_id")
+	login := c.Query("login")
+
+	users, err := h.groupsService.GetAvailableNewUsers(c, groupId, login)
+	if err != nil {
+		log.Printf("Failed to retrieve available new users: %v", err)
+		var status int
+		switch {
+		case errors.Is(err, errorsModels.ErrGroupDoesNotExist):
+			status = http.StatusNotFound
+		default:
+			status = http.StatusInternalServerError
+		}
+		return c.Status(status).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.Status(http.StatusOK).JSON(users)
 }

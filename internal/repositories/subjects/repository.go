@@ -2,18 +2,19 @@ package subjects
 
 import (
 	"errors"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
-	"sad/internal/models/subjects"
+	subjectsModels "sad/internal/models/subjects"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5"
 )
 
 type repository struct {
-	db *pgx.Conn
+	db *pgxpool.Pool
 }
 
-func NewRepository(db *pgx.Conn) *repository {
+func NewRepository(db *pgxpool.Pool) *repository {
 	return &repository{
 		db: db,
 	}
@@ -21,7 +22,7 @@ func NewRepository(db *pgx.Conn) *repository {
 
 func (r *repository) Create(c *fiber.Ctx, subject subjectsModels.Subject) error {
 	query := "INSERT INTO subjects (id, name) VALUES (@id, @name)"
-	log.Printf("Creating subject: %v", subject)
+	log.Printf("Creating subject: %#v", subject)
 
 	args := pgx.NamedArgs{
 		"id":   subject.Id,
@@ -29,9 +30,9 @@ func (r *repository) Create(c *fiber.Ctx, subject subjectsModels.Subject) error 
 	}
 	_, err := r.db.Exec(c.Context(), query, args)
 	if err != nil {
-		log.Printf("Error creating subject: %v, error: %v", subject, err)
+		log.Printf("Error creating subject: %#v, error: %v", subject, err)
 	} else {
-		log.Printf("Subject created successfully: %v", subject)
+		log.Printf("Subject created successfully: %#v", subject)
 	}
 
 	return err
@@ -90,21 +91,35 @@ func (r *repository) GetById(c *fiber.Ctx, subjectId string) (*subjectsModels.Su
 	return subject, nil
 }
 
-func (r *repository) AddSubjectToGroup(c *fiber.Ctx, subjectId, groupId string) error {
-	query := "INSERT INTO groups_subjects (group_id, subject_id) VALUES (@group_id, @subject_id)"
-	args := pgx.NamedArgs{
-		"subject_id": subjectId,
-		"group_id":   groupId,
-	}
-	log.Printf("Adding subject %s to group %s", subjectId, groupId)
-
-	_, err := r.db.Exec(c.Context(), query, args)
+func (r *repository) AddSubjectToGroup(c *fiber.Ctx, subjectGroup subjectsModels.SubjectGroup) error {
+	log.Printf("Adding subject %s to group %s", subjectGroup.SubjectId, subjectGroup.GroupId)
+	subjectTeacherId, err := r.GetSubjectTeacherId(c, subjectGroup.SubjectId, subjectGroup.TeacherId)
 	if err != nil {
-		log.Printf("Error adding subject to group: subject_id=%s, group_id=%s, error: %v", subjectId, groupId, err)
+		log.Printf("Error adding subject to group: subject_id=%s, group_id=%s, error: %v",
+			subjectGroup.SubjectId, subjectGroup.GroupId, err)
 		return err
 	}
 
-	log.Printf("Subject added to group successfully: subject_id=%s, group_id=%s", subjectId, groupId)
+	if subjectTeacherId == "" {
+		log.Printf("Record with subject id %s and teacher id %s not found",
+			subjectGroup.SubjectId, subjectGroup.TeacherId)
+	}
+
+	query := "INSERT INTO groups_subjects (group_id, subject_teacher_id) VALUES (@group_id, @subject_teacher_id)"
+	args := pgx.NamedArgs{
+		"subject_teacher_id": subjectTeacherId,
+		"group_id":           subjectGroup.GroupId,
+	}
+
+	_, err = r.db.Exec(c.Context(), query, args)
+	if err != nil {
+		log.Printf("Error adding subject to group: subject_id=%s, group_id=%s, teacher_id=%s, error: %v",
+			subjectGroup.SubjectId, subjectGroup.GroupId, subjectGroup.TeacherId, err)
+		return err
+	}
+
+	log.Printf("Subject added to group successfully: subject_id=%s, group_id=%s, teacher_id=%s",
+		subjectGroup.SubjectId, subjectGroup.GroupId, subjectGroup.TeacherId)
 	return nil
 }
 
@@ -205,4 +220,29 @@ func (r *repository) IsSubjectInGroup(c *fiber.Ctx, subjectId, groupId string) (
 	}
 
 	return count > 0, nil
+}
+
+func (r *repository) GetSubjectTeacherId(c *fiber.Ctx, subjectId, teacherId string) (string, error) {
+	query := "SELECT id FROM subjects_teachers WHERE subject_id=@subject_id AND teacher_id=@teacher_id"
+	log.Printf("Fetching subject by id: %s", subjectId)
+
+	args := pgx.NamedArgs{
+		"subject_id": subjectId,
+		"teacher_id": teacherId,
+	}
+
+	row := r.db.QueryRow(c.Context(), query, args)
+
+	var subjectTeacherId string
+	err := row.Scan(&subjectTeacherId)
+	if errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("Record with subject id %s and teacher id %s not found", subjectId, teacherId)
+		return subjectTeacherId, nil
+	} else if err != nil {
+		log.Printf("Error fetching record with subject id %s and teacher id %s, error: %v", subjectId, teacherId, err)
+		return subjectTeacherId, err
+	}
+
+	log.Printf("Record with subject id %s and teacher id %s fetched successfully", subjectId, teacherId)
+	return subjectTeacherId, nil
 }

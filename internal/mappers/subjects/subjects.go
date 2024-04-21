@@ -12,10 +12,10 @@ func FromSubjectRepoModelToEntity(repoModel subjectsModels.SubjectRepoModel) sub
 }
 
 func FromSubjectsRepoModelToEntity(repoModel []subjectsModels.SubjectRepoModel) []subjectsModels.Subject {
-	groups := make([]subjectsModels.Subject, 0)
-	for _, groupRepo := range repoModel {
-		group := FromSubjectRepoModelToEntity(groupRepo)
-		groups = append(groups, group)
+	subjects := make([]subjectsModels.Subject, 0)
+	for _, subjectRepo := range repoModel {
+		subject := FromSubjectRepoModelToEntity(subjectRepo)
+		subjects = append(subjects, subject)
 	}
-	return groups
+	return subjects
 }

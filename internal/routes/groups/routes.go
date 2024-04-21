@@ -6,19 +6,22 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func GroupsRoutes(r *fiber.App, handler groups.GroupsHandler, authMiddleware interface{}, adminMiddleware interface{}) {
+func GroupsRoutes(r *fiber.App, handler groups.GroupsHandler, authMiddleware interface{}, allowedRolesMiddleware interface{}) {
 	groupApi := r.Group("/api/groups").Use(authMiddleware)
 
-	groupApi.Get("/", handler.GetAll)                       // Получить список всех групп
-	groupApi.Post("/", handler.Create).Use(adminMiddleware) // Создать новую группу
+	groupApi.Get("/", handler.GetAll)                              // Получить список всех групп
+	groupApi.Post("/", handler.Create).Use(allowedRolesMiddleware) // Создать новую группу
 
 	group := groupApi.Group("/:group_id")
 
-	group.Get("/", handler.Get)                            // Получить группу по ID
-	group.Get("/details", handler.GetWithDetails)          // Получить группу по ID с деталями
-	group.Delete("/", handler.Delete).Use(adminMiddleware) // Удалить группу по ID
-	group.Patch("/", handler.Update).Use(adminMiddleware)  // Обновить группу по ID
+	group.Get("/", handler.Get)                   // Получить группу по ID
+	group.Get("/details", handler.GetWithDetails) // Получить группу по ID с деталями
 
-	group.Post("/users", handler.AddUserToGroup).Use(adminMiddleware)        // Добавить пользователя в группу
-	group.Delete("/users", handler.DeleteUserFromGroup).Use(adminMiddleware) // Удалить пользователя из группы
+	groupWithAllowedRole := group.Use(allowedRolesMiddleware)
+	groupWithAllowedRole.Delete("/", handler.Delete) // Удалить группу по ID
+	groupWithAllowedRole.Patch("/", handler.Update)  // Обновить группу по ID
+	groupWithAllowedRole.Get("/available_new_users", handler.GetAvailableNewUsers)
+
+	groupWithAllowedRole.Post("/users/", handler.AddUserToGroup)                // Добавить пользователя в группу
+	groupWithAllowedRole.Delete("/users/:user_id", handler.DeleteUserFromGroup) // Удалить пользователя из группы
 }

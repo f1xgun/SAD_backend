@@ -3,6 +3,7 @@ package groups
 import (
 	"database/sql"
 	"errors"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	groupsModels "sad/internal/models/groups"
 	usersModels "sad/internal/models/users"
@@ -12,10 +13,10 @@ import (
 )
 
 type repository struct {
-	db *pgx.Conn
+	db *pgxpool.Pool
 }
 
-func NewRepository(db *pgx.Conn) *repository {
+func NewRepository(db *pgxpool.Pool) *repository {
 	return &repository{
 		db: db,
 	}
@@ -23,7 +24,7 @@ func NewRepository(db *pgx.Conn) *repository {
 
 func (r *repository) Create(c *fiber.Ctx, group groupsModels.Group) error {
 	query := "INSERT INTO groups (id, number) VALUES (@id, @number)"
-	log.Printf("Creating group: %v", group)
+	log.Printf("Creating group: %#v", group)
 
 	args := pgx.NamedArgs{
 		"id":     group.Id,
@@ -31,9 +32,9 @@ func (r *repository) Create(c *fiber.Ctx, group groupsModels.Group) error {
 	}
 	_, err := r.db.Exec(c.Context(), query, args)
 	if err != nil {
-		log.Printf("Error creating group: %v, error: %v", group, err)
+		log.Printf("Error creating group: %#v, error: %v", group, err)
 	} else {
-		log.Printf("Group created successfully: %v", group)
+		log.Printf("Group created successfully: %#v", group)
 	}
 
 	return err
@@ -275,4 +276,52 @@ func (r *repository) CheckGroupExists(c *fiber.Ctx, groupId string) (bool, error
 		return false, err
 	}
 	return count > 0, nil
+}
+
+func (r *repository) GetAvailableNewUsers(c *fiber.Ctx, groupId, login string) ([]usersModels.UserInfoRepoModel, error) {
+	query := `
+	SELECT uuid, name, login 
+	FROM users u 
+	WHERE login LIKE '%' || @login || '%'
+	AND NOT EXISTS (
+		SELECT 1 
+		FROM users_groups ug 
+		WHERE u.uuid = ug.user_id 
+	  	AND ug.group_id = @groupId
+	)
+	`
+
+	args := pgx.NamedArgs{
+		"login":   login,
+		"groupId": groupId,
+	}
+
+	rows, err := r.db.Query(c.Context(), query, args)
+	if err != nil {
+		log.Printf("Error fetching group with users: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []usersModels.UserInfoRepoModel
+	for rows.Next() {
+		var user usersModels.UserInfoRepoModel
+
+		if err := rows.Scan(&user.Id, &user.Login, &user.Name); err != nil {
+			log.Printf("Error scanning user: %v", err)
+			continue
+		}
+
+		if user.Id.Valid {
+			users = append(users, user)
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		log.Printf("Error iterating over users_groups: %v", err)
+		return nil, err
+	}
+
+	log.Printf("Available users fetched successfully")
+	return users, nil
 }
