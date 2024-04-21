@@ -243,6 +243,17 @@ func (s *service) UpdateGroup(c *fiber.Ctx, groupId string, group groupsModels.G
 
 	if err := s.groupsRepository.UpdateGroup(c, group); err != nil {
 		log.Printf("Error updating group '%s': %v", groupId, err)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			switch pgErr.Code {
+			case errorsModels.NeedUniqueValueErrCode:
+				log.Printf("Group with number '%s' already exists", group.Number)
+				return errorsModels.ErrGroupExists
+			default:
+				log.Printf("Error updating group '%s' in the repository: %s", group.Number, err.Error())
+				return errorsModels.ErrServer
+			}
+		}
 		return err
 	}
 
