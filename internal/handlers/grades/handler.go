@@ -16,6 +16,8 @@ type GradesHandler interface {
 	Delete(c *fiber.Ctx) error
 	Update(c *fiber.Ctx) error
 	GetAllStudentGrades(c *fiber.Ctx) error
+	//GetAllStudentFinalGrades(c *fiber.Ctx) error
+	GetStudentGradesBySubjectAndGroup(c *fiber.Ctx) error
 }
 
 type gradesHandler struct {
@@ -100,8 +102,17 @@ func (h *gradesHandler) Update(c *fiber.Ctx) error {
 
 func (h *gradesHandler) GetAllStudentGrades(c *fiber.Ctx) error {
 	studentId := c.Params("student_id")
+	var subjectId *string
+	isFinal := false
+	if subject := c.Query("subject_id"); subject != "" {
+		subjectId = &subject
+	}
 
-	grades, err := h.gradesService.GetAllStudentGrades(c, studentId)
+	if c.Query("is_final") == "true" {
+		isFinal = true
+	}
+
+	grades, err := h.gradesService.GetAllStudentGrades(c, studentId, isFinal, subjectId)
 
 	if err != nil {
 		var status int
@@ -121,4 +132,45 @@ func (h *gradesHandler) GetAllStudentGrades(c *fiber.Ctx) error {
 		return c.Status(status).JSON(fiber.Map{"error": errMsg})
 	}
 	return c.Status(http.StatusOK).JSON(grades)
+}
+
+//func (h *gradesHandler) GetAllStudentFinalGrades(c *fiber.Ctx) error {
+//	studentId := c.Params("student_id")
+//
+//	grades, err := h.gradesService.GetAllStudentGrades(c, studentId, true, nil)
+//
+//	if err != nil {
+//		var status int
+//		var errMsg string
+//		switch {
+//		case errors.Is(err, errorsModels.ErrUserDoesNotExist):
+//			status = http.StatusNotFound
+//			errMsg = "User with this student_id doesn't exist"
+//		case errors.Is(err, errorsModels.ErrServer):
+//			status = http.StatusInternalServerError
+//			errMsg = "Server error"
+//		default:
+//			status = http.StatusInternalServerError
+//			errMsg = err.Error()
+//		}
+//		log.Printf("Failed to get user grades: %v", errMsg)
+//		return c.Status(status).JSON(fiber.Map{"error": errMsg})
+//	}
+//	return c.Status(http.StatusOK).JSON(grades)
+//}
+
+func (h *gradesHandler) GetStudentGradesBySubjectAndGroup(c *fiber.Ctx) error {
+	groupId := c.Query("group_id")
+	subjectId := c.Query("subject_id")
+	isFinal := false
+	if c.Query("is_final") == "true" {
+		isFinal = true
+	}
+
+	usersWithGrades, err := h.gradesService.GetStudentsGradesBySubjectAndGroup(c, subjectId, groupId, isFinal)
+	if err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.Status(http.StatusOK).JSON(usersWithGrades)
 }

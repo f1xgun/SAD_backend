@@ -18,6 +18,8 @@ type SubjectsHandler interface {
 	AddSubjectToGroup(c *fiber.Ctx) error
 	DeleteSubjectFromGroup(c *fiber.Ctx) error
 	Update(c *fiber.Ctx) error
+	GetAvailableTeachers(c *fiber.Ctx) error
+	GetWithDetails(c *fiber.Ctx) error
 }
 
 type subjectsHandler struct {
@@ -37,7 +39,8 @@ func (h *subjectsHandler) Create(c *fiber.Ctx) error {
 	}
 
 	name := body.Name
-	err := h.subjectsService.Create(c, name)
+	teacherId := body.TeacherId
+	err := h.subjectsService.Create(c, name, teacherId)
 	if err != nil {
 		var status int
 		var errMsg string
@@ -152,9 +155,9 @@ func (h *subjectsHandler) Update(c *fiber.Ctx) error {
 		case errors.Is(err, errorsModels.ErrSubjectExists):
 			status = http.StatusConflict
 			errMsg = "Subject with this number already exist"
-		//case errors.Is(err, errorsModels.ErrSubjectWithThisTeacherExists):
-		//	status = http.StatusConflict
-		//	errMsg = err.Error()
+		case errors.Is(err, errorsModels.ErrSubjectWithThisTeacherExists):
+			status = http.StatusConflict
+			errMsg = err.Error()
 		case errors.Is(err, errorsModels.ErrServer):
 			status = http.StatusInternalServerError
 			errMsg = "Server error"
@@ -166,4 +169,33 @@ func (h *subjectsHandler) Update(c *fiber.Ctx) error {
 		return c.Status(status).JSON(fiber.Map{"error": errMsg})
 	}
 	return c.Status(http.StatusOK).JSON(fiber.Map{"message": "Subject update successfully"})
+}
+
+func (h *subjectsHandler) GetAvailableTeachers(c *fiber.Ctx) error {
+	teacherName := c.Query("name")
+
+	teachers, err := h.subjectsService.GetAvailableTeachers(c, teacherName)
+	if err != nil {
+		log.Printf("Failed to retrieve available teachers: %v", err)
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.Status(http.StatusOK).JSON(teachers)
+}
+
+func (h *subjectsHandler) GetWithDetails(c *fiber.Ctx) error {
+	subjectId := c.Params("subject_id")
+
+	subject, err := h.subjectsService.GetByIdWithDetails(c, subjectId)
+	if err != nil {
+		log.Printf("Failed to retrieve subject: %v", err)
+		var status int
+		switch {
+		case errors.Is(err, errorsModels.ErrSubjectDoesNotExist):
+			status = http.StatusNotFound
+		default:
+			status = http.StatusInternalServerError
+		}
+		return c.Status(status).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.Status(http.StatusOK).JSON(subject)
 }

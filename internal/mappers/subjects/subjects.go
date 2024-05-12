@@ -1,6 +1,7 @@
 package subjectsMappers
 
 import (
+	usersMapper "sad/internal/mappers/users"
 	"sad/internal/models/subjects"
 )
 
@@ -18,4 +19,12 @@ func FromSubjectsRepoModelToEntity(repoModel []subjectsModels.SubjectRepoModel) 
 		subjects = append(subjects, subject)
 	}
 	return subjects
+}
+
+func FromSubjectDetailsRepoModelToEntity(repoModel subjectsModels.SubjectInfoRepoModel) subjectsModels.SubjectInfo {
+	return subjectsModels.SubjectInfo{
+		Id:      repoModel.Id.String,
+		Name:    repoModel.Name.String,
+		Teacher: usersMapper.UserInfoFromRepoToService(repoModel.Teacher),
+	}
 }

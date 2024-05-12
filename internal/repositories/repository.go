@@ -18,6 +18,7 @@ type UserRepository interface {
 	GetUserInfo(c *fiber.Ctx, userId string) (*usersModels.UserInfoRepoModel, error)
 	GetUsersInfo(c *fiber.Ctx) ([]usersModels.UserInfoRepoModel, error)
 	DeleteUser(c *fiber.Ctx, userId string) error
+	GetAvailableTeachers(c *fiber.Ctx, teacherName string) ([]usersModels.UserInfoRepoModel, error)
 }
 
 type GroupsRepository interface {
@@ -32,6 +33,7 @@ type GroupsRepository interface {
 	UpdateGroup(c *fiber.Ctx, group groupsModels.Group) error
 	CheckGroupExists(c *fiber.Ctx, groupId string) (bool, error)
 	GetAvailableNewUsers(c *fiber.Ctx, groupId, login string) ([]usersModels.UserInfoRepoModel, error)
+	GetGroupsWithSubjectsByTeacher(c *fiber.Ctx, teacherId string) ([]subjectsModels.GroupsWithSubjectsRepoModel, error)
 }
 
 type SubjectsRepository interface {
@@ -44,13 +46,16 @@ type SubjectsRepository interface {
 	UpdateSubject(c *fiber.Ctx, subject subjectsModels.Subject) error
 	IsSubjectInGroup(c *fiber.Ctx, subjectId, groupId string) (bool, error)
 	GetSubjectTeacherId(c *fiber.Ctx, subjectId, teacherId string) (string, error)
+	AddTeacherToSubject(c *fiber.Ctx, subjectTeacherId, subjectId, teacherId string) error
+	GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjectsModels.SubjectInfoRepoModel, error)
 }
 
 type GradesRepository interface {
 	Create(c *fiber.Ctx, grade gradesModels.Grade) error
 	Delete(c *fiber.Ctx, gradeId string) error
 	Update(c *fiber.Ctx, grade gradesModels.Grade) error
-	GetAllStudentGrades(c *fiber.Ctx, userId string) ([]gradesModels.GradeInfoRepoModel, error)
+	GetAllStudentGrades(c *fiber.Ctx, userId string, isFinal bool, subjectId *string) ([]gradesModels.GradeInfoRepoModel, error)
 	GetById(c *fiber.Ctx, gradeId string) (*gradesModels.GradeRepoModel, error)
+	GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId, studentId string, isFinal bool) ([]gradesModels.UserSubjectGradesRepoModel, error)
 	//GetGroupGradesBySubjectId(c *fiber.Ctx, subjectId string, groupId string) ([]gradesModels.GradeRepoModel, error)
 }

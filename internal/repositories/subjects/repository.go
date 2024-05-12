@@ -2,12 +2,11 @@ package subjects
 
 import (
 	"errors"
+	"github.com/gofiber/fiber/v2"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	subjectsModels "sad/internal/models/subjects"
-
-	"github.com/gofiber/fiber/v2"
-	"github.com/jackc/pgx/v5"
 )
 
 type repository struct {
@@ -181,20 +180,22 @@ func (r *repository) DeleteSubject(c *fiber.Ctx, subjectId string) error {
 }
 
 func (r *repository) UpdateSubject(c *fiber.Ctx, subject subjectsModels.Subject) error {
-	query := "UPDATE subjects SET name=@name WHERE id=@subject_id"
+	log.Printf("Update subject with new value: %#v", subject)
+
+	query := "UPDATE subjects SET name=@name WHERE id=@subjectId"
 	args := pgx.NamedArgs{
-		"subject_id": subject.Id,
-		"name":       subject.Name,
+		"subjectId": subject.Id,
+		"name":      subject.Name,
 	}
 
-	_, err := r.db.Exec(c.Context(), query, args)
-	if err != nil {
+	if _, err := r.db.Exec(c.Context(), query, args); err != nil {
 		log.Printf("Error updating subject with id %s, err: %v", subject.Id, err)
-	} else {
-		log.Printf("Update subject with id %s successfully", subject.Id)
+		return err
 	}
 
-	return err
+	log.Printf("Update subject with id %s successfully", subject.Id)
+
+	return nil
 }
 
 func (r *repository) IsSubjectInGroup(c *fiber.Ctx, subjectId, groupId string) (bool, error) {
@@ -245,4 +246,53 @@ func (r *repository) GetSubjectTeacherId(c *fiber.Ctx, subjectId, teacherId stri
 
 	log.Printf("Record with subject id %s and teacher id %s fetched successfully", subjectId, teacherId)
 	return subjectTeacherId, nil
+}
+
+func (r *repository) AddTeacherToSubject(c *fiber.Ctx, subjectTeacherId, subjectId, teacherId string) error {
+	log.Printf("Adding teacher %s to subject %s", teacherId, subjectId)
+
+	queryForInsert := `
+	INSERT INTO subjects_teachers (id, subject_id, teacher_id) 
+	VALUES (@subjectTeacherId, @subjectId, @teacherId)
+	`
+	args := pgx.NamedArgs{
+		"subjectTeacherId": subjectTeacherId,
+		"subjectId":        subjectId,
+		"teacherId":        teacherId,
+	}
+
+	if _, err := r.db.Exec(c.Context(), queryForInsert, args); err != nil {
+		log.Printf("Error adding teacher to subject: subject_id=%s, teacher_id=%s, error: %v",
+			subjectId, teacherId, err)
+		return err
+	}
+
+	log.Printf("Teacher added to subject successfully: subject_id=%s, teacher_id=%s",
+		subjectId, teacherId)
+	return nil
+}
+
+func (r *repository) GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjectsModels.SubjectInfoRepoModel, error) {
+	query := `
+		SELECT s.id, s.name, u.uuid, u.login, u.name
+		FROM subjects s
+		LEFT JOIN subjects_teachers st ON s.id = st.subject_id
+		LEFT JOIN users u ON u.uuid = st.teacher_id
+		WHERE s.id = $1;
+	`
+
+	row := r.db.QueryRow(c.Context(), query, subjectId)
+	var subject subjectsModels.SubjectInfoRepoModel
+	err := row.Scan(&subject.Id, &subject.Name, &subject.Teacher.Id, &subject.Teacher.Login, &subject.Teacher.Name)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("Subject with id %s not found", subjectId)
+		return nil, nil
+	} else if err != nil {
+		log.Printf("Error fetching subject with details: %v", err)
+		return nil, err
+	}
+
+	log.Printf("Subject with details fetched successfully")
+	return &subject, nil
 }

@@ -2,15 +2,13 @@ package grades
 
 import (
 	"errors"
+	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"log"
 	gradesMapper "sad/internal/mappers/grades"
 	errorsModels "sad/internal/models/errors"
 	gradesModels "sad/internal/models/grades"
 	"sad/internal/repositories"
-	"time"
-
-	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 )
 
 type service struct {
@@ -40,16 +38,12 @@ func (s *service) Create(c *fiber.Ctx, grade gradesModels.Grade) error {
 		return errors.New("subject_id is required")
 	}
 
-	if grade.Evaluation < 0 || grade.Evaluation > 5 {
-		return errors.New("evaluation should be from 0 to 5")
-	}
-
 	newGrade := gradesModels.Grade{
 		Id:         uuid.New().String(),
 		StudentId:  grade.StudentId,
 		SubjectId:  grade.SubjectId,
 		Evaluation: grade.Evaluation,
-		CreatedAt:  time.Now(),
+		IsFinal:    grade.IsFinal,
 	}
 
 	if err := s.gradesRepository.Create(c, newGrade); err != nil {
@@ -99,10 +93,6 @@ func (s *service) Update(c *fiber.Ctx, gradeId string, evaluation int) error {
 
 	updatedExistedGrade := gradesMapper.FromGradeRepoModelToEntity(*existedGrade)
 
-	if evaluation < 0 && evaluation > 5 {
-		return errors.New("evaluation should be from 0 to 5")
-	}
-
 	updatedExistedGrade.Evaluation = evaluation
 
 	if err := s.gradesRepository.Update(c, updatedExistedGrade); err != nil {
@@ -114,7 +104,7 @@ func (s *service) Update(c *fiber.Ctx, gradeId string, evaluation int) error {
 	return nil
 }
 
-func (s *service) GetAllStudentGrades(c *fiber.Ctx, studentId string) ([]gradesModels.GradeInfo, error) {
+func (s *service) GetAllStudentGrades(c *fiber.Ctx, studentId string, isFinal bool, subjectId *string) ([]gradesModels.GradeInfo, error) {
 	log.Printf("Attemting to get student's with id '%s' grades", studentId)
 
 	isUserExist, err := s.usersRepository.CheckUserExists(c, studentId)
@@ -128,7 +118,7 @@ func (s *service) GetAllStudentGrades(c *fiber.Ctx, studentId string) ([]gradesM
 		return nil, errorsModels.ErrUserDoesNotExist
 	}
 
-	gradesRepo, err := s.gradesRepository.GetAllStudentGrades(c, studentId)
+	gradesRepo, err := s.gradesRepository.GetAllStudentGrades(c, studentId, isFinal, subjectId)
 
 	if err != nil {
 		log.Printf("Error retrieving grades")
@@ -138,4 +128,16 @@ func (s *service) GetAllStudentGrades(c *fiber.Ctx, studentId string) ([]gradesM
 	grades := gradesMapper.FromGradesInfoRepoModelToEntity(gradesRepo)
 
 	return grades, nil
+}
+
+func (s *service) GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId, groupId string, isFinal bool) ([]gradesModels.UserSubjectGrades, error) {
+	userWithGradesRepo, err := s.gradesRepository.GetStudentsGradesBySubjectAndGroup(c, subjectId, groupId, isFinal)
+
+	if err != nil {
+		return nil, err
+	}
+
+	userWithGrades := gradesMapper.FromUserWithGradesRepoModelToEntity(userWithGradesRepo)
+
+	return userWithGrades, nil
 }

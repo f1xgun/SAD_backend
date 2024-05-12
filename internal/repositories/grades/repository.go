@@ -2,9 +2,11 @@ package grades
 
 import (
 	"errors"
+	"fmt"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	gradesModels "sad/internal/models/grades"
+	usersModels "sad/internal/models/users"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5"
@@ -21,7 +23,7 @@ func NewRepository(db *pgxpool.Pool) *repository {
 }
 
 func (r *repository) Create(c *fiber.Ctx, grade gradesModels.Grade) error {
-	query := "INSERT INTO grades (id, evaluation, subject_id, student_id) VALUES (@id, @evaluation, @subject_id, @student_id)"
+	query := "INSERT INTO grades (id, evaluation, subject_id, student_id, is_final) VALUES (@id, @evaluation, @subject_id, @student_id, @is_final)"
 	log.Printf("Creating grade: %#v", grade)
 
 	args := pgx.NamedArgs{
@@ -29,6 +31,7 @@ func (r *repository) Create(c *fiber.Ctx, grade gradesModels.Grade) error {
 		"evaluation": grade.Evaluation,
 		"subject_id": grade.SubjectId,
 		"student_id": grade.StudentId,
+		"is_final":   *grade.IsFinal,
 	}
 	_, err := r.db.Exec(c.Context(), query, args)
 	if err != nil {
@@ -40,11 +43,25 @@ func (r *repository) Create(c *fiber.Ctx, grade gradesModels.Grade) error {
 	return err
 }
 
-func (r *repository) GetAllStudentGrades(c *fiber.Ctx, studentId string) ([]gradesModels.GradeInfoRepoModel, error) {
-	query := "SELECT g.id, s.name, evaluation, created_at FROM grades g JOIN subjects s on g.subject_id = s.id WHERE student_id=$1 ORDER BY created_at DESC"
+func (r *repository) GetAllStudentGrades(c *fiber.Ctx, studentId string, isFinal bool, subjectId *string) ([]gradesModels.GradeInfoRepoModel, error) {
+	query := `
+	SELECT g.id, s.name, evaluation, created_at 
+	FROM grades g 
+	JOIN subjects s on g.subject_id = s.id 
+	WHERE student_id=$1 AND is_final=$2
+	`
+	args := []interface{}{
+		studentId,
+		isFinal,
+	}
+	if subjectId != nil {
+		query = fmt.Sprintf("%s AND subject_id=$3", query)
+		args = append(args, *subjectId)
+	}
+	query = fmt.Sprintf("%s ORDER BY created_at DESC", query)
 	log.Printf("Fetching all student's %s grades", studentId)
 
-	rows, err := r.db.Query(c.Context(), query, studentId)
+	rows, err := r.db.Query(c.Context(), query, args...)
 	if err != nil {
 		log.Printf("Error fetching all grades: %v", err)
 		return nil, err
@@ -58,6 +75,7 @@ func (r *repository) GetAllStudentGrades(c *fiber.Ctx, studentId string) ([]grad
 			log.Printf("Error scanning grade: %v", err)
 			continue
 		}
+
 		if grade.Id.Valid {
 			grades = append(grades, grade)
 		}
@@ -68,7 +86,7 @@ func (r *repository) GetAllStudentGrades(c *fiber.Ctx, studentId string) ([]grad
 		return nil, err
 	}
 
-	log.Printf("All grades fetched successfully")
+	log.Printf("All grades fetched successfully %#v", grades)
 	return grades, nil
 }
 
@@ -121,4 +139,64 @@ func (r *repository) GetById(c *fiber.Ctx, gradeId string) (*gradesModels.GradeR
 
 	log.Printf("Grade fetched successfully by id: %s", gradeId)
 	return grade, nil
+}
+
+func (r *repository) GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId, groupId string, isFinal bool) ([]gradesModels.UserSubjectGradesRepoModel, error) {
+	query := `
+	SELECT u.uuid, u.login, u.name, g.id, g.evaluation, g.created_at 
+	FROM groups gr
+	JOIN users_groups ug ON ug.group_id = gr.id
+	JOIN users u ON u.uuid = ug.user_id
+	LEFT JOIN grades g ON g.student_id = u.uuid AND g.subject_id=$2 AND g.is_final=$3
+	WHERE gr.id = $1
+	ORDER BY u.uuid
+	`
+
+	rows, err := r.db.Query(c.Context(), query, groupId, subjectId, isFinal)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var usersSubjectGrades []gradesModels.UserSubjectGradesRepoModel
+
+	for rows.Next() {
+		var studentInfo usersModels.UserInfoRepoModel
+		var gradeInfo gradesModels.GradeInfoRepoModel
+
+		err := rows.Scan(&studentInfo.Id, &studentInfo.Login, &studentInfo.Name, &gradeInfo.Id, &gradeInfo.Evaluation, &gradeInfo.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+
+		var userExist bool
+		if gradeInfo.Id.Valid {
+			for i := range usersSubjectGrades {
+				if usersSubjectGrades[i].Student.Id.String == studentInfo.Id.String {
+					userExist = true
+					usersSubjectGrades[i].Grades = append(usersSubjectGrades[i].Grades, gradeInfo)
+					break
+				}
+			}
+		}
+
+		if !userExist {
+			grades := make([]gradesModels.GradeInfoRepoModel, 0)
+			if gradeInfo.Id.Valid {
+				grades = append(grades, gradeInfo)
+			}
+			usersSubjectGrades = append(usersSubjectGrades, gradesModels.UserSubjectGradesRepoModel{
+				Student: studentInfo,
+				Grades:  grades,
+			})
+		}
+
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	log.Printf("Grades %#v", usersSubjectGrades)
+	return usersSubjectGrades, nil
 }

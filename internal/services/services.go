@@ -36,20 +36,24 @@ type GroupsService interface {
 	DeleteUserFromGroup(c *fiber.Ctx, groupId string, userId string) error
 	UpdateGroup(c *fiber.Ctx, groupId string, group groupsModels.Group) error
 	GetAvailableNewUsers(c *fiber.Ctx, groupId, login string) ([]usersModels.UserInfo, error)
+	GetGroupsWithSubjectsByTeacher(c *fiber.Ctx, teacherId string) ([]subjectsModels.GroupsWithSubjects, error)
 }
 
 type SubjectsService interface {
-	Create(c *fiber.Ctx, name string) error
+	Create(c *fiber.Ctx, name string, teacherId string) error
 	GetAll(c *fiber.Ctx) ([]subjectsModels.Subject, error)
 	DeleteSubject(c *fiber.Ctx, subjectId string) error
 	AddSubjectToGroup(c *fiber.Ctx, subjectGroup subjectsModels.SubjectGroup) error
 	DeleteSubjectFromGroup(c *fiber.Ctx, subjectId string, groupId string) error
 	UpdateSubject(c *fiber.Ctx, subjectId string, subject subjectsModels.Subject) error
+	GetAvailableTeachers(c *fiber.Ctx, teacherName string) ([]usersModels.UserInfo, error)
+	GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjectsModels.SubjectInfo, error)
 }
 
 type GradesService interface {
 	Create(c *fiber.Ctx, grade gradesModels.Grade) error
 	Delete(c *fiber.Ctx, gradeId string) error
 	Update(c *fiber.Ctx, gradeId string, evaluation int) error
-	GetAllStudentGrades(c *fiber.Ctx, userId string) ([]gradesModels.GradeInfo, error)
+	GetAllStudentGrades(c *fiber.Ctx, userId string, isFinal bool, subjectId *string) ([]gradesModels.GradeInfo, error)
+	GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId, groupId string, isFinal bool) ([]gradesModels.UserSubjectGrades, error)
 }

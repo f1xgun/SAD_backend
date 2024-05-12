@@ -22,6 +22,7 @@ type GroupsHandler interface {
 	DeleteUserFromGroup(c *fiber.Ctx) error
 	Update(c *fiber.Ctx) error
 	GetAvailableNewUsers(c *fiber.Ctx) error
+	GetGroupsWithSubjectsByTeacher(c *fiber.Ctx) error
 }
 
 type groupsHandler struct {
@@ -216,4 +217,15 @@ func (h *groupsHandler) GetAvailableNewUsers(c *fiber.Ctx) error {
 	}
 
 	return c.Status(http.StatusOK).JSON(users)
+}
+
+func (h *groupsHandler) GetGroupsWithSubjectsByTeacher(c *fiber.Ctx) error {
+	teacherId := c.Query("teacher_id")
+
+	groupsWithSujects, err := h.groupsService.GetGroupsWithSubjectsByTeacher(c, teacherId)
+	if err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.Status(http.StatusOK).JSON(groupsWithSujects)
 }

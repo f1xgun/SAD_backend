@@ -1,6 +1,7 @@
 package grades
 
 import (
+	usersMapper "sad/internal/mappers/users"
 	gradesModels "sad/internal/models/grades"
 )
 
@@ -41,4 +42,17 @@ func FromGradesInfoRepoModelToEntity(repoModel []gradesModels.GradeInfoRepoModel
 		grades = append(grades, grade)
 	}
 	return grades
+}
+
+func FromUserWithGradesRepoModelToEntity(repoModel []gradesModels.UserSubjectGradesRepoModel) []gradesModels.UserSubjectGrades {
+	usersWithGrades := make([]gradesModels.UserSubjectGrades, 0)
+	for _, userWithGradesRepo := range repoModel {
+		userWithGrades := gradesModels.UserSubjectGrades{
+			Student: usersMapper.UserInfoFromRepoToService(userWithGradesRepo.Student),
+			Grades:  FromGradesInfoRepoModelToEntity(userWithGradesRepo.Grades),
+		}
+		usersWithGrades = append(usersWithGrades, userWithGrades)
+	}
+
+	return usersWithGrades
 }

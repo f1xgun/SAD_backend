@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	groupsModels "sad/internal/models/groups"
+	subjectsModels "sad/internal/models/subjects"
 	usersModels "sad/internal/models/users"
 
 	"github.com/gofiber/fiber/v2"
@@ -324,4 +325,60 @@ func (r *repository) GetAvailableNewUsers(c *fiber.Ctx, groupId, login string) (
 
 	log.Printf("Available users fetched successfully")
 	return users, nil
+}
+
+func (r *repository) GetGroupsWithSubjectsByTeacher(c *fiber.Ctx, teacherId string) ([]subjectsModels.GroupsWithSubjectsRepoModel, error) {
+	query := `
+	SELECT g.id, g.number, s.id, s.name
+	FROM subjects_teachers st
+	JOIN subjects s ON st.subject_id = s.id
+	JOIN groups_subjects gs ON gs.subject_teacher_id = st.id
+	JOIN groups g ON g.id = gs.group_id
+	WHERE st.teacher_id = $1
+	`
+
+	rows, err := r.db.Query(c.Context(), query, teacherId)
+	if err != nil {
+		log.Printf("Error fetching groups with subjects: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var groupsWithSubjects []subjectsModels.GroupsWithSubjectsRepoModel
+	for rows.Next() {
+		var groupID, groupNumber, subjectID, subjectName sql.NullString
+		err := rows.Scan(&groupID, &groupNumber, &subjectID, &subjectName)
+		if err != nil {
+			continue
+		}
+		// TODO: Убрать, очень плохой код
+		var groupExists bool
+		for i := range groupsWithSubjects {
+			if groupsWithSubjects[i].Group.Id.String == groupID.String && groupsWithSubjects[i].Group.Number.String == groupNumber.String {
+				groupExists = true
+				groupsWithSubjects[i].Subjects = append(groupsWithSubjects[i].Subjects, subjectsModels.SubjectRepoModel{
+					Id:   subjectID,
+					Name: subjectName,
+				})
+				break
+			}
+		}
+
+		if !groupExists {
+			group := groupsModels.GroupRepoModel{
+				Id:     groupID,
+				Number: groupNumber,
+			}
+			groupsWithSubjects = append(groupsWithSubjects, subjectsModels.GroupsWithSubjectsRepoModel{
+				Group:    group,
+				Subjects: []subjectsModels.SubjectRepoModel{{Id: subjectID, Name: subjectName}},
+			})
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return groupsWithSubjects, nil
 }

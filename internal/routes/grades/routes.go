@@ -7,9 +7,11 @@ import (
 
 func GradesRoutes(r *fiber.App, handler grades.GradesHandler, authMiddleware interface{}, allowedRoleMiddleware interface{}) {
 	gradesApi := r.Group("/api/grades").Use(authMiddleware)
+	gradesApi.Get("/", handler.GetStudentGradesBySubjectAndGroup)
 
 	userGradeApi := gradesApi.Group("/:student_id")
 	userGradeApi.Get("/", handler.GetAllStudentGrades)
+	//userGradeApi.Get("/final", handler.GetAllStudentFinalGrades)
 
 	gradesApi.Post("/", handler.Create).Use(allowedRoleMiddleware) // Создать новую оценку
 

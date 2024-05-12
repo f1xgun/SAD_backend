@@ -194,3 +194,42 @@ func (r *repository) DeleteUser(c *fiber.Ctx, userId string) error {
 
 	return nil
 }
+
+func (r *repository) GetAvailableTeachers(c *fiber.Ctx, teacherName string) ([]usersModels.UserInfoRepoModel, error) {
+	query := `
+	SELECT uuid, name, login 
+	FROM users 
+	WHERE name LIKE '%' || $1 || '%'
+	AND role = 'teacher'
+	`
+	log.Printf("Fetching teachers by name: %s", teacherName)
+
+	rows, err := r.db.Query(c.Context(), query, teacherName)
+	if err != nil {
+		log.Printf("Error fetching teachers by name: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var teachers []usersModels.UserInfoRepoModel
+	for rows.Next() {
+		var teacher usersModels.UserInfoRepoModel
+
+		if err := rows.Scan(&teacher.Id, &teacher.Login, &teacher.Name); err != nil {
+			log.Printf("Error scanning teacher: %v", err)
+			continue
+		}
+
+		if teacher.Id.Valid {
+			teachers = append(teachers, teacher)
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		log.Printf("Error iterating over users: %v", err)
+		return nil, err
+	}
+
+	log.Printf("Available teachers fetched successfully")
+	return teachers, nil
+}

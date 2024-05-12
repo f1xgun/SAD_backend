@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	usersMapper "sad/internal/mappers/users"
+	subjectsModels "sad/internal/models/subjects"
 	usersModels "sad/internal/models/users"
 	"sad/internal/repositories"
 
@@ -272,4 +273,21 @@ func (s *service) GetAvailableNewUsers(c *fiber.Ctx, groupId, login string) ([]u
 	users := usersMapper.UsersInfoFromRepoToService(usersRepo)
 
 	return users, nil
+}
+
+func (s *service) GetGroupsWithSubjectsByTeacher(c *fiber.Ctx, teacherId string) ([]subjectsModels.GroupsWithSubjects, error) {
+	groupsWithSubjectsRepo, err := s.groupsRepository.GetGroupsWithSubjectsByTeacher(c, teacherId)
+	log.Printf("Groups with subjects: %#v", groupsWithSubjectsRepo)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if groupsWithSubjectsRepo == nil {
+		return nil, nil
+	}
+
+	groupsWithSubjects := groupsMapper.GroupsWithSubjectsFromRepoModelToEntity(groupsWithSubjectsRepo)
+
+	return groupsWithSubjects, nil
 }

@@ -1,8 +1,11 @@
 package groupsMapper
 
 import (
+	"log"
+	subjectsMappers "sad/internal/mappers/subjects"
 	"sad/internal/mappers/users"
 	"sad/internal/models/groups"
+	subjectsModels "sad/internal/models/subjects"
 	"sad/internal/models/users"
 )
 
@@ -36,4 +39,19 @@ func FromGroupsRepoModelToEntity(repoModel []groupsModels.GroupRepoModel) []grou
 		groups = append(groups, group)
 	}
 	return groups
+}
+
+func GroupsWithSubjectsFromRepoModelToEntity(repoModel []subjectsModels.GroupsWithSubjectsRepoModel) []subjectsModels.GroupsWithSubjects {
+	groupsWithSubjects := make([]subjectsModels.GroupsWithSubjects, 0)
+	log.Printf("Groups with subjects before: %#v", repoModel)
+	for _, groupWithSubjectRepo := range repoModel {
+		groupWithSubject := subjectsModels.GroupsWithSubjects{
+			Group:    FromGroupRepoModelToEntity(groupWithSubjectRepo.Group),
+			Subjects: subjectsMappers.FromSubjectsRepoModelToEntity(groupWithSubjectRepo.Subjects),
+		}
+
+		groupsWithSubjects = append(groupsWithSubjects, groupWithSubject)
+	}
+	log.Printf("Groups with subjects after: %#v", groupsWithSubjects)
+	return groupsWithSubjects
 }
