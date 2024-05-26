@@ -157,7 +157,7 @@ func (r *repository) DeleteSubject(c *fiber.Ctx, subjectId string) error {
 	args := pgx.NamedArgs{
 		"subject_id": subjectId,
 	}
-	query := "DELETE FROM groups_subjects WHERE subject_id=@subject_id"
+	query := "DELETE FROM subjects_teachers WHERE subject_id=@subject_id"
 
 	if _, err := tx.Exec(c.Context(), query, args); err != nil {
 		log.Printf("Error deleting groups from subject with id %s, err: %v", subjectId, err)

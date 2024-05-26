@@ -56,6 +56,6 @@ type GradesRepository interface {
 	Update(c *fiber.Ctx, grade gradesModels.Grade) error
 	GetAllStudentGrades(c *fiber.Ctx, userId string, isFinal bool, subjectId *string) ([]gradesModels.GradeInfoRepoModel, error)
 	GetById(c *fiber.Ctx, gradeId string) (*gradesModels.GradeRepoModel, error)
-	GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId, studentId string, isFinal bool) ([]gradesModels.UserSubjectGradesRepoModel, error)
+	GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId, studentId string, isFinal *bool) ([]gradesModels.UserSubjectGradesRepoModel, error)
 	//GetGroupGradesBySubjectId(c *fiber.Ctx, subjectId string, groupId string) ([]gradesModels.GradeRepoModel, error)
 }

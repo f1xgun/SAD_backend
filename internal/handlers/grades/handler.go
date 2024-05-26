@@ -16,7 +16,6 @@ type GradesHandler interface {
 	Delete(c *fiber.Ctx) error
 	Update(c *fiber.Ctx) error
 	GetAllStudentGrades(c *fiber.Ctx) error
-	//GetAllStudentFinalGrades(c *fiber.Ctx) error
 	GetStudentGradesBySubjectAndGroup(c *fiber.Ctx) error
 }
 
@@ -134,37 +133,17 @@ func (h *gradesHandler) GetAllStudentGrades(c *fiber.Ctx) error {
 	return c.Status(http.StatusOK).JSON(grades)
 }
 
-//func (h *gradesHandler) GetAllStudentFinalGrades(c *fiber.Ctx) error {
-//	studentId := c.Params("student_id")
-//
-//	grades, err := h.gradesService.GetAllStudentGrades(c, studentId, true, nil)
-//
-//	if err != nil {
-//		var status int
-//		var errMsg string
-//		switch {
-//		case errors.Is(err, errorsModels.ErrUserDoesNotExist):
-//			status = http.StatusNotFound
-//			errMsg = "User with this student_id doesn't exist"
-//		case errors.Is(err, errorsModels.ErrServer):
-//			status = http.StatusInternalServerError
-//			errMsg = "Server error"
-//		default:
-//			status = http.StatusInternalServerError
-//			errMsg = err.Error()
-//		}
-//		log.Printf("Failed to get user grades: %v", errMsg)
-//		return c.Status(status).JSON(fiber.Map{"error": errMsg})
-//	}
-//	return c.Status(http.StatusOK).JSON(grades)
-//}
-
 func (h *gradesHandler) GetStudentGradesBySubjectAndGroup(c *fiber.Ctx) error {
 	groupId := c.Query("group_id")
 	subjectId := c.Query("subject_id")
-	isFinal := false
-	if c.Query("is_final") == "true" {
-		isFinal = true
+	var isFinal *bool
+	isFinalQuery := c.Query("is_final")
+	if isFinalQuery == "true" {
+		value := true
+		isFinal = &value
+	} else if isFinalQuery == "false" {
+		value := false
+		isFinal = &value
 	}
 
 	usersWithGrades, err := h.gradesService.GetStudentsGradesBySubjectAndGroup(c, subjectId, groupId, isFinal)

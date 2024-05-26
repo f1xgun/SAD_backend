@@ -141,16 +141,25 @@ func (r *repository) GetById(c *fiber.Ctx, gradeId string) (*gradesModels.GradeR
 	return grade, nil
 }
 
-func (r *repository) GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId, groupId string, isFinal bool) ([]gradesModels.UserSubjectGradesRepoModel, error) {
+func (r *repository) GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId, groupId string, isFinal *bool) ([]gradesModels.UserSubjectGradesRepoModel, error) {
 	query := `
-	SELECT u.uuid, u.login, u.name, g.id, g.evaluation, g.created_at 
+	SELECT u.uuid, u.login, u.name, g.id, g.evaluation, g.created_at, g.is_final
 	FROM groups gr
 	JOIN users_groups ug ON ug.group_id = gr.id
 	JOIN users u ON u.uuid = ug.user_id
 	LEFT JOIN grades g ON g.student_id = u.uuid AND g.subject_id=$2 AND g.is_final=$3
 	WHERE gr.id = $1
-	ORDER BY u.uuid
 	`
+
+	args := []interface{}{
+		subjectId,
+		groupId,
+	}
+	if isFinal != nil {
+		query = fmt.Sprintf("%s AND is_final=$3", query)
+		args = append(args, *isFinal)
+	}
+	query = fmt.Sprintf("%s ORDER BY uuid", query)
 
 	rows, err := r.db.Query(c.Context(), query, groupId, subjectId, isFinal)
 	if err != nil {
@@ -164,7 +173,14 @@ func (r *repository) GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId,
 		var studentInfo usersModels.UserInfoRepoModel
 		var gradeInfo gradesModels.GradeInfoRepoModel
 
-		err := rows.Scan(&studentInfo.Id, &studentInfo.Login, &studentInfo.Name, &gradeInfo.Id, &gradeInfo.Evaluation, &gradeInfo.CreatedAt)
+		err := rows.Scan(
+			&studentInfo.Id,
+			&studentInfo.Login,
+			&studentInfo.Name,
+			&gradeInfo.Id,
+			&gradeInfo.Evaluation,
+			&gradeInfo.CreatedAt,
+			&gradeInfo.IsFinal)
 		if err != nil {
 			return nil, err
 		}

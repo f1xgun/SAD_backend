@@ -26,12 +26,18 @@ func FromGradesRepoModelToEntity(repoModel []gradesModels.GradeRepoModel) []grad
 }
 
 func FromGradeInfoRepoModelToEntity(repoModel gradesModels.GradeInfoRepoModel) gradesModels.GradeInfo {
+	isFinal := false
+	if repoModel.IsFinal.Valid {
+		isFinal = repoModel.IsFinal.Bool
+	}
+
 	return gradesModels.GradeInfo{
 		Id:          repoModel.Id.String,
 		SubjectName: repoModel.SubjectName.String,
 		TeacherName: repoModel.TeacherName.String,
 		Evaluation:  int(repoModel.Evaluation.Int16),
 		CreatedAt:   repoModel.CreatedAt.Time,
+		IsFinal:     &isFinal,
 	}
 }
 

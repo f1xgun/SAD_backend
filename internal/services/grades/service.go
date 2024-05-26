@@ -130,7 +130,7 @@ func (s *service) GetAllStudentGrades(c *fiber.Ctx, studentId string, isFinal bo
 	return grades, nil
 }
 
-func (s *service) GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId, groupId string, isFinal bool) ([]gradesModels.UserSubjectGrades, error) {
+func (s *service) GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId, groupId string, isFinal *bool) ([]gradesModels.UserSubjectGrades, error) {
 	userWithGradesRepo, err := s.gradesRepository.GetStudentsGradesBySubjectAndGroup(c, subjectId, groupId, isFinal)
 
 	if err != nil {

@@ -31,6 +31,7 @@ type GradeInfo struct {
 	TeacherName string    `json:"teacher_name,omitempty"`
 	Evaluation  int       `json:"evaluation"`
 	CreatedAt   time.Time `json:"created_at"`
+	IsFinal     *bool     `json:"is_final,omitempty"`
 }
 
 type GradeInfoRepoModel struct {
@@ -39,6 +40,7 @@ type GradeInfoRepoModel struct {
 	TeacherName sql.NullString
 	Evaluation  sql.NullInt16
 	CreatedAt   sql.NullTime
+	IsFinal     sql.NullBool
 }
 
 type UserSubjectGrades struct {
