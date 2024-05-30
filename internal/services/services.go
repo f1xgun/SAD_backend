@@ -37,6 +37,7 @@ type GroupsService interface {
 	UpdateGroup(c *fiber.Ctx, groupId string, group groupsModels.Group) error
 	GetAvailableNewUsers(c *fiber.Ctx, groupId, login string) ([]usersModels.UserInfo, error)
 	GetGroupsWithSubjectsByTeacher(c *fiber.Ctx, teacherId string) ([]subjectsModels.GroupsWithSubjects, error)
+	GetGroupsBySubjectAndTeacher(c *fiber.Ctx, teacherId, subjectId string) ([]groupsModels.Group, error)
 }
 
 type SubjectsService interface {
@@ -48,6 +49,7 @@ type SubjectsService interface {
 	UpdateSubject(c *fiber.Ctx, subjectId string, subject subjectsModels.Subject) error
 	GetAvailableTeachers(c *fiber.Ctx, teacherName string) ([]usersModels.UserInfo, error)
 	GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjectsModels.SubjectInfo, error)
+	GetSubjectsByTeacherId(c *fiber.Ctx, teacherId string) ([]subjectsModels.Subject, error)
 }
 
 type GradesService interface {

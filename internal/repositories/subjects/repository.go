@@ -296,3 +296,40 @@ func (r *repository) GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjec
 	log.Printf("Subject with details fetched successfully")
 	return &subject, nil
 }
+
+func (r *repository) GetSubjectsByTeacherId(c *fiber.Ctx, teacherId string) ([]subjectsModels.SubjectRepoModel, error) {
+	query := `
+		SELECT s.id, s.name
+		FROM subjects_teachers st
+		JOIN subjects s ON st.subject_id = s.id
+		WHERE st.teacher_id = $1;
+	`
+
+	rows, err := r.db.Query(c.Context(), query, teacherId)
+	if err != nil {
+		log.Printf("Error fetching subjects by teacher's id: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var subjects []subjectsModels.SubjectRepoModel
+	for rows.Next() {
+		var subject subjectsModels.SubjectRepoModel
+		if err := rows.Scan(&subject.Id, &subject.Name); err != nil {
+			log.Printf("Error scanning subject: %v", err)
+			continue
+		}
+
+		if subject.Id.Valid {
+			subjects = append(subjects, subject)
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		log.Printf("Error iterating over subjects: %v", err)
+		return nil, err
+	}
+
+	log.Printf("All subjects fetched successfully")
+	return subjects, nil
+}

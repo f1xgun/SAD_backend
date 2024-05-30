@@ -45,7 +45,7 @@ func (r *repository) Create(c *fiber.Ctx, grade gradesModels.Grade) error {
 
 func (r *repository) GetAllStudentGrades(c *fiber.Ctx, studentId string, isFinal bool, subjectId *string) ([]gradesModels.GradeInfoRepoModel, error) {
 	query := `
-	SELECT g.id, s.name, evaluation, created_at 
+	SELECT g.id, s.name, evaluation, created_at, g.is_final
 	FROM grades g 
 	JOIN subjects s on g.subject_id = s.id 
 	WHERE student_id=$1 AND is_final=$2
@@ -71,7 +71,7 @@ func (r *repository) GetAllStudentGrades(c *fiber.Ctx, studentId string, isFinal
 	var grades []gradesModels.GradeInfoRepoModel
 	for rows.Next() {
 		var grade gradesModels.GradeInfoRepoModel
-		if err := rows.Scan(&grade.Id, &grade.SubjectName, &grade.Evaluation, &grade.CreatedAt); err != nil {
+		if err := rows.Scan(&grade.Id, &grade.SubjectName, &grade.Evaluation, &grade.CreatedAt, &grade.IsFinal); err != nil {
 			log.Printf("Error scanning grade: %v", err)
 			continue
 		}

@@ -291,3 +291,18 @@ func (s *service) GetGroupsWithSubjectsByTeacher(c *fiber.Ctx, teacherId string)
 
 	return groupsWithSubjects, nil
 }
+
+func (s *service) GetGroupsBySubjectAndTeacher(c *fiber.Ctx, teacherId, subjectId string) ([]groupsModels.Group, error) {
+	groupsRepo, err := s.groupsRepository.GetGroupsBySubjectAndTeacher(c, teacherId, subjectId)
+	if err != nil {
+		return nil, err
+	}
+
+	if groupsRepo == nil {
+		return nil, nil
+	}
+
+	groups := groupsMapper.FromGroupsRepoModelToEntity(groupsRepo)
+
+	return groups, nil
+}

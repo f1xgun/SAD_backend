@@ -382,3 +382,46 @@ func (r *repository) GetGroupsWithSubjectsByTeacher(c *fiber.Ctx, teacherId stri
 
 	return groupsWithSubjects, nil
 }
+
+func (r *repository) GetGroupsBySubjectAndTeacher(c *fiber.Ctx, teacherId, subjectId string) ([]groupsModels.GroupRepoModel, error) {
+	query := `
+		SELECT g.id, number 
+		FROM groups g
+		JOIN groups_subjects gs ON g.id = gs.group_id
+		JOIN subjects_teachers st ON gs.subject_teacher_id = st.id
+		WHERE teacher_id = @teacherId AND subject_id = @subjectId
+	`
+	log.Printf("Fetching all groups by subject %s and teacher %s", subjectId, teacherId)
+
+	args := pgx.NamedArgs{
+		"teacherId": teacherId,
+		"subjectId": subjectId,
+	}
+
+	rows, err := r.db.Query(c.Context(), query, args)
+	if err != nil {
+		log.Printf("Error fetching groups by subject and teacher: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var groups []groupsModels.GroupRepoModel
+	for rows.Next() {
+		var group groupsModels.GroupRepoModel
+		if err := rows.Scan(&group.Id, &group.Number); err != nil {
+			log.Printf("Error scanning group: %v", err)
+			continue
+		}
+		if group.Id.Valid {
+			groups = append(groups, group)
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		log.Printf("Error iterating over groups: %v", err)
+		return nil, err
+	}
+
+	log.Printf("Groups by subject and teacher fetched successfully")
+	return groups, nil
+}

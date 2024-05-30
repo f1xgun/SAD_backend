@@ -6,11 +6,12 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func GroupsRoutes(r *fiber.App, handler groups.GroupsHandler, authMiddleware interface{}, allowedRolesMiddleware interface{}) {
+func Routes(r *fiber.App, handler groups.Handler, authMiddleware interface{}, allowedRolesMiddleware interface{}) {
 	groupApi := r.Group("/api/groups").Use(authMiddleware)
 
 	groupApi.Get("/", handler.GetAll) // Получить список всех групп
 	groupApi.Get("/teacher", handler.GetGroupsWithSubjectsByTeacher)
+	groupApi.Get("/get_by_subject", handler.GetTeacherGroupsBySubject)
 
 	group := groupApi.Group("/:group_id")
 

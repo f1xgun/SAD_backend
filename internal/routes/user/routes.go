@@ -6,7 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func UserRoutes(r *fiber.App, handler users.UserHandler, authMiddleware interface{}, allowedRolesMiddleware interface{}) {
+func Routes(r *fiber.App, handler users.UserHandler, authMiddleware interface{}, allowedRolesMiddleware interface{}) {
 	usersApi := r.Group("/api/users").Use(authMiddleware)
 	usersApi.Get("/list", handler.GetUsers)
 	usersApi.Get("/info", handler.GetUserInfoByToken)

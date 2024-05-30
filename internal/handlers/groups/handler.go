@@ -12,7 +12,7 @@ import (
 	groupsModels "sad/internal/models/groups"
 )
 
-type GroupsHandler interface {
+type Handler interface {
 	Create(c *fiber.Ctx) error
 	GetAll(c *fiber.Ctx) error
 	Get(c *fiber.Ctx) error
@@ -23,13 +23,14 @@ type GroupsHandler interface {
 	Update(c *fiber.Ctx) error
 	GetAvailableNewUsers(c *fiber.Ctx) error
 	GetGroupsWithSubjectsByTeacher(c *fiber.Ctx) error
+	GetTeacherGroupsBySubject(c *fiber.Ctx) error
 }
 
 type groupsHandler struct {
 	groupsService services.GroupsService
 }
 
-func NewGroupsHandler(groupsService services.GroupsService) GroupsHandler {
+func NewGroupsHandler(groupsService services.GroupsService) Handler {
 	return &groupsHandler{
 		groupsService: groupsService,
 	}
@@ -228,4 +229,20 @@ func (h *groupsHandler) GetGroupsWithSubjectsByTeacher(c *fiber.Ctx) error {
 	}
 
 	return c.Status(http.StatusOK).JSON(groupsWithSujects)
+}
+
+func (h *groupsHandler) GetTeacherGroupsBySubject(c *fiber.Ctx) error {
+	userID, ok := c.Locals("userID").(string)
+	if !ok {
+		log.Println("Failed to assert type for userID from Locals")
+		return errorsModels.ErrServer
+	}
+
+	subjectId := c.Query("subject_id")
+	groups, err := h.groupsService.GetGroupsBySubjectAndTeacher(c, userID, subjectId)
+	if err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.Status(http.StatusOK).JSON(groups)
 }

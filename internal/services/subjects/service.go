@@ -314,3 +314,12 @@ func (s *service) GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjectsM
 
 	return &subject, nil
 }
+
+func (s *service) GetSubjectsByTeacherId(c *fiber.Ctx, teacherId string) ([]subjectsModels.Subject, error) {
+	log.Printf("Attempting to get subjects by teacher id %v", teacherId)
+	subjectsRepo, err := s.subjectsRepository.GetSubjectsByTeacherId(c, teacherId)
+
+	subjects := subjectsMappers.FromSubjectsRepoModelToEntity(subjectsRepo)
+
+	return subjects, err
+}

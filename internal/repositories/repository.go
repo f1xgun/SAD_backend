@@ -34,6 +34,7 @@ type GroupsRepository interface {
 	CheckGroupExists(c *fiber.Ctx, groupId string) (bool, error)
 	GetAvailableNewUsers(c *fiber.Ctx, groupId, login string) ([]usersModels.UserInfoRepoModel, error)
 	GetGroupsWithSubjectsByTeacher(c *fiber.Ctx, teacherId string) ([]subjectsModels.GroupsWithSubjectsRepoModel, error)
+	GetGroupsBySubjectAndTeacher(c *fiber.Ctx, teacherId, subjectId string) ([]groupsModels.GroupRepoModel, error)
 }
 
 type SubjectsRepository interface {
@@ -48,6 +49,7 @@ type SubjectsRepository interface {
 	GetSubjectTeacherId(c *fiber.Ctx, subjectId, teacherId string) (string, error)
 	AddTeacherToSubject(c *fiber.Ctx, subjectTeacherId, subjectId, teacherId string) error
 	GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjectsModels.SubjectInfoRepoModel, error)
+	GetSubjectsByTeacherId(c *fiber.Ctx, teacherId string) ([]subjectsModels.SubjectRepoModel, error)
 }
 
 type GradesRepository interface {

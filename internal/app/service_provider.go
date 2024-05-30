@@ -45,7 +45,7 @@ type serviceProvider struct {
 
 	userHandler users.UserHandler
 
-	groupsHandler groups.GroupsHandler
+	groupsHandler groups.Handler
 
 	subjectsHandler subjects.SubjectsHandler
 
@@ -158,7 +158,7 @@ func (s *serviceProvider) NewUserHandler() users.UserHandler {
 	return s.userHandler
 }
 
-func (s *serviceProvider) NewGroupsHandler() groups.GroupsHandler {
+func (s *serviceProvider) NewGroupsHandler() groups.Handler {
 	if s.groupsHandler == nil {
 		s.groupsHandler = groups.NewGroupsHandler(s.GroupsService())
 	}

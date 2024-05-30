@@ -29,13 +29,13 @@ type App struct {
 func NewApp() (*App, error) {
 	app := &App{}
 
-	config, err := config.LoadConfig(".")
+	loadedConfig, err := config.LoadConfig(".")
 
 	if err != nil {
 		log.Fatalf("Failed to load environment variables: %s", err.Error())
 	}
 
-	app.config = config
+	app.config = loadedConfig
 
 	app.initDeps()
 
@@ -62,49 +62,64 @@ func (a *App) setupRouter() *fiber.App {
 		EnableStackTrace: true,
 		StackTraceHandler: func(c *fiber.Ctx, e interface{}) {
 			log.Printf("Unhandled error occurred: %v", e)
-			c.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
+			err := c.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
+			if err != nil {
+				log.Printf("Error %v", err)
+			}
 		},
 	}))
 	r.Use(logger.New())
 
 	authHandler := a.serviceProvider.NewAuthHandler()
 
-	auth.AuthRoutes(r, authHandler)
+	auth.Routes(r, authHandler)
 
 	userHandler := a.serviceProvider.NewUserHandler()
 
-	usersRoutes.UserRoutes(
+	authMiddleware := middleware.NewAuthMiddleware(a.config)
+
+	adminMiddleware := users.AllowedRoleMiddleware(
+		a.serviceProvider.userService,
+		[]usersModels.UserRole{usersModels.Admin},
+	)
+
+	teacherAndAdminMiddleware := users.AllowedRoleMiddleware(
+		a.serviceProvider.userService,
+		[]usersModels.UserRole{usersModels.Admin, usersModels.Teacher},
+	)
+
+	usersRoutes.Routes(
 		r,
 		userHandler,
-		middleware.NewAuthMiddleware(a.config),
-		users.AllowedRoleMiddleware(a.serviceProvider.userService, []usersModels.UserRole{usersModels.Admin}),
+		authMiddleware,
+		adminMiddleware,
 	)
 
 	groupsHandler := a.serviceProvider.NewGroupsHandler()
 
-	groups.GroupsRoutes(
+	groups.Routes(
 		r,
 		groupsHandler,
-		middleware.NewAuthMiddleware(a.config),
-		users.AllowedRoleMiddleware(a.serviceProvider.userService, []usersModels.UserRole{usersModels.Admin}),
+		authMiddleware,
+		adminMiddleware,
 	)
 
 	subjectsHandler := a.serviceProvider.NewSubjectsHandler()
 
-	subjects.SubjectsRoutes(
+	subjects.Routes(
 		r,
 		subjectsHandler,
-		middleware.NewAuthMiddleware(a.config),
-		users.AllowedRoleMiddleware(a.serviceProvider.userService, []usersModels.UserRole{usersModels.Admin}),
+		authMiddleware,
+		adminMiddleware,
 	)
 
 	gradesHandler := a.serviceProvider.NewGradesHandler()
 
-	grades.GradesRoutes(
+	grades.Routes(
 		r,
 		gradesHandler,
-		middleware.NewAuthMiddleware(a.config),
-		users.AllowedRoleMiddleware(a.serviceProvider.userService, []usersModels.UserRole{usersModels.Admin, usersModels.Teacher}),
+		authMiddleware,
+		teacherAndAdminMiddleware,
 	)
 
 	return r

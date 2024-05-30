@@ -20,6 +20,7 @@ type SubjectsHandler interface {
 	Update(c *fiber.Ctx) error
 	GetAvailableTeachers(c *fiber.Ctx) error
 	GetWithDetails(c *fiber.Ctx) error
+	GetSubjectsByTeacherId(c *fiber.Ctx) error
 }
 
 type subjectsHandler struct {
@@ -198,4 +199,20 @@ func (h *subjectsHandler) GetWithDetails(c *fiber.Ctx) error {
 		return c.Status(status).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.Status(http.StatusOK).JSON(subject)
+}
+
+func (h *subjectsHandler) GetSubjectsByTeacherId(c *fiber.Ctx) error {
+	userID, ok := c.Locals("userID").(string)
+	if !ok {
+		log.Println("Failed to assert type for userID from Locals")
+		return errorsModels.ErrServer
+	}
+
+	subjects, err := h.subjectsService.GetSubjectsByTeacherId(c, userID)
+	if err != nil {
+		log.Printf("Failed to retrieve subjects by teacher id: %v", err)
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.Status(http.StatusOK).JSON(subjects)
 }
