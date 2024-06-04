@@ -14,6 +14,7 @@ type Grade struct {
 	Evaluation int       `json:"evaluation"`
 	CreatedAt  time.Time `json:"created_at"`
 	IsFinal    *bool     `json:"is_final"`
+	Comment    *string   `json:"comment"`
 }
 
 type GradeRepoModel struct {
@@ -23,6 +24,8 @@ type GradeRepoModel struct {
 	TeacherId  sql.NullString
 	Evaluation sql.NullInt16
 	CreatedAt  sql.NullTime
+	IsFinal    sql.NullBool
+	Comment    sql.NullString
 }
 
 type GradeInfo struct {
@@ -32,6 +35,7 @@ type GradeInfo struct {
 	Evaluation  int       `json:"evaluation"`
 	CreatedAt   time.Time `json:"created_at"`
 	IsFinal     *bool     `json:"is_final,omitempty"`
+	Comment     *string   `json:"comment,omitempty"`
 }
 
 type GradeInfoRepoModel struct {
@@ -41,6 +45,7 @@ type GradeInfoRepoModel struct {
 	Evaluation  sql.NullInt16
 	CreatedAt   sql.NullTime
 	IsFinal     sql.NullBool
+	Comment     sql.NullString
 }
 
 type UserSubjectGrades struct {

@@ -55,7 +55,7 @@ type SubjectsService interface {
 type GradesService interface {
 	Create(c *fiber.Ctx, grade gradesModels.Grade) error
 	Delete(c *fiber.Ctx, gradeId string) error
-	Update(c *fiber.Ctx, gradeId string, evaluation int) error
+	Update(c *fiber.Ctx, gradeId string, evaluation *int, comment *string) error
 	GetAllStudentGrades(c *fiber.Ctx, userId string, isFinal bool, subjectId *string) ([]gradesModels.GradeInfo, error)
 	GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId, groupId string, isFinal *bool) ([]gradesModels.UserSubjectGrades, error)
 }

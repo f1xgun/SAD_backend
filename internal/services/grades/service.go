@@ -44,6 +44,7 @@ func (s *service) Create(c *fiber.Ctx, grade gradesModels.Grade) error {
 		SubjectId:  grade.SubjectId,
 		Evaluation: grade.Evaluation,
 		IsFinal:    grade.IsFinal,
+		Comment:    grade.Comment,
 	}
 
 	if err := s.gradesRepository.Create(c, newGrade); err != nil {
@@ -77,7 +78,7 @@ func (s *service) Delete(c *fiber.Ctx, gradeId string) error {
 	return nil
 }
 
-func (s *service) Update(c *fiber.Ctx, gradeId string, evaluation int) error {
+func (s *service) Update(c *fiber.Ctx, gradeId string, evaluation *int, comment *string) error {
 	log.Printf("Attempting to update grade '%s'.", gradeId)
 
 	existedGrade, err := s.gradesRepository.GetById(c, gradeId)
@@ -93,7 +94,13 @@ func (s *service) Update(c *fiber.Ctx, gradeId string, evaluation int) error {
 
 	updatedExistedGrade := gradesMapper.FromGradeRepoModelToEntity(*existedGrade)
 
-	updatedExistedGrade.Evaluation = evaluation
+	if evaluation != nil {
+		updatedExistedGrade.Evaluation = *evaluation
+	}
+
+	if comment != nil {
+		updatedExistedGrade.Comment = comment
+	}
 
 	if err := s.gradesRepository.Update(c, updatedExistedGrade); err != nil {
 		log.Printf("Error updating grade '%s': %v", gradeId, err)

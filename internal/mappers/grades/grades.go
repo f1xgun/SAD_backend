@@ -6,6 +6,16 @@ import (
 )
 
 func FromGradeRepoModelToEntity(repoModel gradesModels.GradeRepoModel) gradesModels.Grade {
+	isFinal := false
+	if repoModel.IsFinal.Valid {
+		isFinal = repoModel.IsFinal.Bool
+	}
+
+	var comment string
+	if repoModel.Comment.Valid {
+		comment = repoModel.Comment.String
+	}
+
 	return gradesModels.Grade{
 		Id:         repoModel.Id.String,
 		StudentId:  repoModel.StudentId.String,
@@ -13,6 +23,8 @@ func FromGradeRepoModelToEntity(repoModel gradesModels.GradeRepoModel) gradesMod
 		CreatedAt:  repoModel.CreatedAt.Time,
 		Evaluation: int(repoModel.Evaluation.Int16),
 		TeacherId:  repoModel.TeacherId.String,
+		IsFinal:    &isFinal,
+		Comment:    &comment,
 	}
 }
 
@@ -31,6 +43,11 @@ func FromGradeInfoRepoModelToEntity(repoModel gradesModels.GradeInfoRepoModel) g
 		isFinal = repoModel.IsFinal.Bool
 	}
 
+	var comment string
+	if repoModel.Comment.Valid {
+		comment = repoModel.Comment.String
+	}
+
 	return gradesModels.GradeInfo{
 		Id:          repoModel.Id.String,
 		SubjectName: repoModel.SubjectName.String,
@@ -38,6 +55,7 @@ func FromGradeInfoRepoModelToEntity(repoModel gradesModels.GradeInfoRepoModel) g
 		Evaluation:  int(repoModel.Evaluation.Int16),
 		CreatedAt:   repoModel.CreatedAt.Time,
 		IsFinal:     &isFinal,
+		Comment:     &comment,
 	}
 }
 

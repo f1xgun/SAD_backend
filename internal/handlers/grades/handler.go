@@ -78,8 +78,9 @@ func (h *gradesHandler) Update(c *fiber.Ctx) error {
 	}
 
 	evaluation := grade.Evaluation
+	comment := grade.Comment
 
-	if err := h.gradesService.Update(c, gradeId, evaluation); err != nil {
+	if err := h.gradesService.Update(c, gradeId, &evaluation, comment); err != nil {
 		var status int
 		var errMsg string
 		switch {
