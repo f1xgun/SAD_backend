@@ -18,11 +18,18 @@ func UserInfoFromRepoToService(repoModel usersModels.UserInfoRepoModel) usersMod
 		role = ""
 	}
 
+	var middleName string
+	if repoModel.MiddleName.Valid {
+		middleName = repoModel.MiddleName.String
+	}
+
 	return usersModels.UserInfo{
-		Id:    repoModel.Id.String,
-		Name:  repoModel.Name.String,
-		Login: repoModel.Login.String,
-		Role:  role,
+		Id:         repoModel.Id.String,
+		Name:       repoModel.Name.String,
+		Login:      repoModel.Login.String,
+		Role:       role,
+		LastName:   repoModel.LastName.String,
+		MiddleName: &middleName,
 	}
 }
 

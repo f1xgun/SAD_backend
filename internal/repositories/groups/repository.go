@@ -157,7 +157,7 @@ func (r *repository) IsUserInGroup(c *fiber.Ctx, groupId, userId string) (bool, 
 
 func (r *repository) GetByIdWithUsers(c *fiber.Ctx, groupId string) (*groupsModels.GroupWithUsersRepo, error) {
 	query := `
-		SELECT g.id, g.number, u.uuid, u.login, u.name, u.role
+		SELECT g.id, g.number, u.uuid, u.login, u.name, u.role, u.last_name, u.middle_name
 		FROM groups g
 		LEFT JOIN users_groups ug ON ug.group_id = g.id
 		LEFT JOIN users u ON u.uuid = ug.user_id
@@ -180,7 +180,16 @@ func (r *repository) GetByIdWithUsers(c *fiber.Ctx, groupId string) (*groupsMode
 		var groupId, groupNumber sql.NullString
 		var user usersModels.UserInfoRepoModel
 
-		if err := rows.Scan(&groupId, &groupNumber, &user.Id, &user.Login, &user.Name, &user.Role); err != nil {
+		if err := rows.Scan(
+			&groupId,
+			&groupNumber,
+			&user.Id,
+			&user.Login,
+			&user.Name,
+			&user.Role,
+			&user.LastName,
+			&user.MiddleName,
+		); err != nil {
 			log.Printf("Error scanning group: %v", err)
 			continue
 		}
@@ -282,9 +291,9 @@ func (r *repository) CheckGroupExists(c *fiber.Ctx, groupId string) (bool, error
 
 func (r *repository) GetAvailableNewUsers(c *fiber.Ctx, groupId, login string) ([]usersModels.UserInfoRepoModel, error) {
 	query := `
-	SELECT uuid, name, login 
+	SELECT uuid, name, login, last_name, middle_name
 	FROM users u 
-	WHERE login LIKE '%' || @login || '%'
+	WHERE login LIKE '%' || @login || '%' AND u.role = 'student'
 	AND NOT EXISTS (
 		SELECT 1 
 		FROM users_groups ug 
@@ -308,7 +317,7 @@ func (r *repository) GetAvailableNewUsers(c *fiber.Ctx, groupId, login string) (
 	for rows.Next() {
 		var user usersModels.UserInfoRepoModel
 
-		if err := rows.Scan(&user.Id, &user.Login, &user.Name); err != nil {
+		if err := rows.Scan(&user.Id, &user.Name, &user.Login, &user.LastName, &user.MiddleName); err != nil {
 			log.Printf("Error scanning user: %v", err)
 			continue
 		}

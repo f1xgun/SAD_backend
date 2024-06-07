@@ -70,6 +70,11 @@ func (s *service) Register(c *fiber.Ctx, user authModels.UserRegistrationRequest
 		log.Printf("Validation error: name is required")
 		return "", errors.New("name is required")
 	}
+	if user.LastName == "" {
+		log.Printf("Validation error: last_name is required")
+		return "", errors.New("last_name is required")
+	}
+
 	if user.Password == "" {
 		log.Printf("Validation error: password is required")
 		return "", errors.New("password is required")
@@ -86,11 +91,13 @@ func (s *service) Register(c *fiber.Ctx, user authModels.UserRegistrationRequest
 	}
 
 	newUser := usersModels.User{
-		Id:       uuid.New().String(),
-		Name:     user.Name,
-		Login:    user.Login,
-		Password: hashedPassword,
-		Role:     usersModels.Student,
+		Id:         uuid.New().String(),
+		LastName:   user.LastName,
+		Name:       user.Name,
+		MiddleName: user.MiddleName,
+		Login:      user.Login,
+		Password:   hashedPassword,
+		Role:       usersModels.Student,
 	}
 
 	if err := s.userRepository.Create(c, newUser); err != nil {

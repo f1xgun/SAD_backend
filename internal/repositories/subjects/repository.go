@@ -274,7 +274,7 @@ func (r *repository) AddTeacherToSubject(c *fiber.Ctx, subjectTeacherId, subject
 
 func (r *repository) GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjectsModels.SubjectInfoRepoModel, error) {
 	query := `
-		SELECT s.id, s.name, u.uuid, u.login, u.name
+		SELECT s.id, s.name, u.uuid, u.login, u.name, u.last_name, u.middle_name
 		FROM subjects s
 		LEFT JOIN subjects_teachers st ON s.id = st.subject_id
 		LEFT JOIN users u ON u.uuid = st.teacher_id
@@ -283,7 +283,15 @@ func (r *repository) GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjec
 
 	row := r.db.QueryRow(c.Context(), query, subjectId)
 	var subject subjectsModels.SubjectInfoRepoModel
-	err := row.Scan(&subject.Id, &subject.Name, &subject.Teacher.Id, &subject.Teacher.Login, &subject.Teacher.Name)
+	err := row.Scan(
+		&subject.Id,
+		&subject.Name,
+		&subject.Teacher.Id,
+		&subject.Teacher.Login,
+		&subject.Teacher.Name,
+		&subject.Teacher.LastName,
+		&subject.Teacher.MiddleName,
+	)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		log.Printf("Subject with id %s not found", subjectId)

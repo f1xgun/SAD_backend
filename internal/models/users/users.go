@@ -9,18 +9,22 @@ type UserCredentials struct {
 }
 
 type UserInfo struct {
-	Id    string   `json:"id"`
-	Name  string   `json:"name"`
-	Login string   `json:"login"`
-	Role  UserRole `json:"role,omitempty"`
+	Id         string   `json:"id"`
+	Name       string   `json:"name"`
+	Login      string   `json:"login"`
+	Role       UserRole `json:"role,omitempty"`
+	LastName   string   `json:"last_name"`
+	MiddleName *string  `json:"middle_name,omitempty"`
 }
 
 type User struct {
-	Id       string
-	Name     string
-	Login    string
-	Password string
-	Role     UserRole
+	Id         string   `json:"id"`
+	Name       string   `json:"name"`
+	Login      string   `json:"login"`
+	Password   string   `json:"password"`
+	Role       UserRole `json:"role,omitempty"`
+	LastName   string   `json:"last_name"`
+	MiddleName *string  `json:"middle_name,omitempty"`
 }
 
 type UserRepoModel struct {
@@ -30,10 +34,12 @@ type UserRepoModel struct {
 }
 
 type UserInfoRepoModel struct {
-	Id    sql.NullString
-	Name  sql.NullString
-	Login sql.NullString
-	Role  sql.NullString
+	Id         sql.NullString
+	Name       sql.NullString
+	Login      sql.NullString
+	Role       sql.NullString
+	LastName   sql.NullString
+	MiddleName sql.NullString
 }
 
 type UserRole string

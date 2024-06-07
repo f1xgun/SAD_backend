@@ -64,16 +64,29 @@ func (r *repository) GetByLogin(c *fiber.Ctx, login string) (*usersModels.UserRe
 }
 
 func (r *repository) Create(c *fiber.Ctx, user usersModels.User) error {
-	query := "INSERT INTO users (uuid, name, login, password, role) VALUES (@uuid, @name, @login, @password, @role)"
-	log.Printf("Creating user: %#v", user)
+	query := "INSERT INTO users (uuid, last_name, name, login, password, role"
 
 	args := pgx.NamedArgs{
-		"uuid":     user.Id,
-		"name":     user.Name,
-		"login":    user.Login,
-		"password": user.Password,
-		"role":     user.Role,
+		"uuid":      user.Id,
+		"name":      user.Name,
+		"login":     user.Login,
+		"password":  user.Password,
+		"role":      user.Role,
+		"last_name": user.LastName,
 	}
+
+	if user.MiddleName != nil {
+		query += ", middle_name"
+		args["middle_name"] = *user.MiddleName
+	}
+
+	query += ") VALUES (@uuid, @last_name, @name, @login, @password, @role"
+
+	if user.MiddleName != nil {
+		query += ", @middle_name"
+	}
+
+	query += ")"
 	_, err := r.db.Exec(c.Context(), query, args)
 	if err != nil {
 		log.Printf("Error creating user: %#v, error: %v", user, err)
@@ -114,13 +127,20 @@ func (r *repository) CheckUserExists(c *fiber.Ctx, userId string) (bool, error) 
 }
 
 func (r *repository) GetUserInfo(c *fiber.Ctx, userId string) (*usersModels.UserInfoRepoModel, error) {
-	query := "SELECT uuid, name, login, role FROM users WHERE uuid=$1"
+	query := "SELECT uuid, name, login, role, last_name, middle_name FROM users WHERE uuid=$1"
 	log.Printf("Fetching user by id: %s", userId)
 
 	row := r.db.QueryRow(c.Context(), query, userId)
 
 	userInfo := &usersModels.UserInfoRepoModel{}
-	err := row.Scan(&userInfo.Id, &userInfo.Name, &userInfo.Login, &userInfo.Role)
+	err := row.Scan(
+		&userInfo.Id,
+		&userInfo.Name,
+		&userInfo.Login,
+		&userInfo.Role,
+		&userInfo.LastName,
+		&userInfo.MiddleName,
+	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		log.Printf("User not found with id: %s", userId)
 		return nil, nil
@@ -134,7 +154,7 @@ func (r *repository) GetUserInfo(c *fiber.Ctx, userId string) (*usersModels.User
 }
 
 func (r *repository) GetUsersInfo(c *fiber.Ctx) ([]usersModels.UserInfoRepoModel, error) {
-	query := "SELECT uuid, name, login, role FROM users"
+	query := "SELECT uuid, name, login, role, last_name, middle_name FROM users"
 	log.Printf("Fetching users")
 
 	rows, err := r.db.Query(c.Context(), query)
@@ -148,7 +168,14 @@ func (r *repository) GetUsersInfo(c *fiber.Ctx) ([]usersModels.UserInfoRepoModel
 	for rows.Next() {
 		var userInfo usersModels.UserInfoRepoModel
 
-		if err := rows.Scan(&userInfo.Id, &userInfo.Name, &userInfo.Login, &userInfo.Role); err != nil {
+		if err := rows.Scan(
+			&userInfo.Id,
+			&userInfo.Name,
+			&userInfo.Login,
+			&userInfo.Role,
+			&userInfo.LastName,
+			&userInfo.MiddleName,
+		); err != nil {
 			log.Printf("Error scaning user: %v", err)
 			continue
 		}
@@ -197,9 +224,9 @@ func (r *repository) DeleteUser(c *fiber.Ctx, userId string) error {
 
 func (r *repository) GetAvailableTeachers(c *fiber.Ctx, teacherName string) ([]usersModels.UserInfoRepoModel, error) {
 	query := `
-	SELECT uuid, name, login 
+	SELECT uuid, name, login, last_name, middle_name
 	FROM users 
-	WHERE name LIKE '%' || $1 || '%'
+	WHERE last_name || name || middle_name LIKE '%' || $1 || '%'
 	AND role = 'teacher'
 	`
 	log.Printf("Fetching teachers by name: %s", teacherName)
@@ -215,7 +242,13 @@ func (r *repository) GetAvailableTeachers(c *fiber.Ctx, teacherName string) ([]u
 	for rows.Next() {
 		var teacher usersModels.UserInfoRepoModel
 
-		if err := rows.Scan(&teacher.Id, &teacher.Login, &teacher.Name); err != nil {
+		if err := rows.Scan(
+			&teacher.Id,
+			&teacher.Login,
+			&teacher.Name,
+			&teacher.LastName,
+			&teacher.MiddleName,
+		); err != nil {
 			log.Printf("Error scanning teacher: %v", err)
 			continue
 		}

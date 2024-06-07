@@ -171,7 +171,7 @@ func (r *repository) GetById(c *fiber.Ctx, gradeId string) (*gradesModels.GradeR
 
 func (r *repository) GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId, groupId string, isFinal *bool) ([]gradesModels.UserSubjectGradesRepoModel, error) {
 	query := `
-	SELECT u.uuid, u.login, u.name, g.id, g.evaluation, g.created_at, g.is_final, g.comment
+	SELECT u.uuid, u.login, u.name, u.last_name, u.middle_name, g.id, g.evaluation, g.created_at, g.is_final, g.comment
 	FROM groups gr
 	JOIN users_groups ug ON ug.group_id = gr.id
 	JOIN users u ON u.uuid = ug.user_id
@@ -201,17 +201,18 @@ func (r *repository) GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId,
 		var studentInfo usersModels.UserInfoRepoModel
 		var gradeInfo gradesModels.GradeInfoRepoModel
 
-		err := rows.Scan(
+		if err := rows.Scan(
 			&studentInfo.Id,
 			&studentInfo.Login,
 			&studentInfo.Name,
+			&studentInfo.LastName,
+			&studentInfo.MiddleName,
 			&gradeInfo.Id,
 			&gradeInfo.Evaluation,
 			&gradeInfo.CreatedAt,
 			&gradeInfo.IsFinal,
 			&gradeInfo.Comment,
-		)
-		if err != nil {
+		); err != nil {
 			return nil, err
 		}
 
