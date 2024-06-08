@@ -244,8 +244,8 @@ func (r *repository) GetAvailableTeachers(c *fiber.Ctx, teacherName string) ([]u
 
 		if err := rows.Scan(
 			&teacher.Id,
-			&teacher.Login,
 			&teacher.Name,
+			&teacher.Login,
 			&teacher.LastName,
 			&teacher.MiddleName,
 		); err != nil {

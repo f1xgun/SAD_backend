@@ -45,6 +45,7 @@ func (s *service) Create(c *fiber.Ctx, grade gradesModels.Grade) error {
 		Evaluation: grade.Evaluation,
 		IsFinal:    grade.IsFinal,
 		Comment:    grade.Comment,
+		TeacherId:  grade.TeacherId,
 	}
 
 	if err := s.gradesRepository.Create(c, newGrade); err != nil {

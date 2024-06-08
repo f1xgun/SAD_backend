@@ -23,13 +23,16 @@ func NewRepository(db *pgxpool.Pool) *repository {
 }
 
 func (r *repository) Create(c *fiber.Ctx, grade gradesModels.Grade) error {
-	query := `
+	gradesTableQuery := `
 		INSERT INTO grades (id, evaluation, subject_id, student_id, is_final, comment) 
 		VALUES (@id, @evaluation, @subject_id, @student_id, @is_final, @comment)
 	`
-	log.Printf("Creating grade: %#v", grade)
+	gradesTeachersQuery := `
+		INSERT INTO grades_teachers (grade_id, teacher_id) 
+		VALUES (@grade_id, @teacher_id)
+	`
 
-	args := pgx.NamedArgs{
+	gradesTableQueryArgs := pgx.NamedArgs{
 		"id":         grade.Id,
 		"evaluation": grade.Evaluation,
 		"subject_id": grade.SubjectId,
@@ -38,12 +41,41 @@ func (r *repository) Create(c *fiber.Ctx, grade gradesModels.Grade) error {
 		"comment":    *grade.Comment,
 	}
 
-	_, err := r.db.Exec(c.Context(), query, args)
-	if err != nil {
-		log.Printf("Error creating grade: %#v, error: %v", grade, err)
-	} else {
-		log.Printf("Grade created successfully: %#v", grade)
+	gradesTeachersQueryArgs := pgx.NamedArgs{
+		"grade_id":   grade.Id,
+		"teacher_id": grade.TeacherId,
 	}
+
+	log.Printf("Creating grade: %#v", grade)
+
+	tx, err := r.db.Begin(c.Context())
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err != nil {
+			if rbErr := tx.Rollback(c.Context()); rbErr != nil {
+				log.Printf("Error rolling back transaction: %v", rbErr)
+			}
+		}
+	}()
+
+	if _, err = tx.Exec(c.Context(), gradesTableQuery, gradesTableQueryArgs); err != nil {
+		log.Printf("Error creating grade: %#v, error: %v", grade, err)
+		return err
+	}
+
+	if _, err = tx.Exec(c.Context(), gradesTeachersQuery, gradesTeachersQueryArgs); err != nil {
+		log.Printf("Error add new record in grade_teachers error: %v", err)
+		return err
+	}
+
+	if err = tx.Commit(c.Context()); err != nil {
+		return err
+	}
+
+	log.Printf("Grade created successfully: %#v", grade)
 
 	return err
 }
