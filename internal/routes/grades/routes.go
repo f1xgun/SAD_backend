@@ -5,7 +5,7 @@ import (
 	"sad/internal/handlers/grades"
 )
 
-func Routes(r *fiber.App, handler grades.GradesHandler, authMiddleware interface{}, allowedRoleMiddleware interface{}) {
+func Routes(r *fiber.App, handler grades.Handler, authMiddleware interface{}, allowedRoleMiddleware interface{}) {
 	gradesApi := r.Group("/api/grades").Use(authMiddleware)
 	gradesApi.Get("/", handler.GetStudentGradesBySubjectAndGroup)
 

@@ -11,7 +11,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type GradesHandler interface {
+type Handler interface {
 	Create(c *fiber.Ctx) error
 	Delete(c *fiber.Ctx) error
 	Update(c *fiber.Ctx) error
@@ -23,7 +23,7 @@ type gradesHandler struct {
 	gradesService services.GradesService
 }
 
-func NewGradesHandler(gradesService services.GradesService) GradesHandler {
+func NewGradesHandler(gradesService services.GradesService) Handler {
 	return &gradesHandler{
 		gradesService: gradesService,
 	}

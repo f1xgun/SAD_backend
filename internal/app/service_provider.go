@@ -49,7 +49,7 @@ type serviceProvider struct {
 
 	subjectsHandler subjects.SubjectsHandler
 
-	gradesHandler grades.GradesHandler
+	gradesHandler grades.Handler
 
 	db *pgxpool.Pool
 }
@@ -174,7 +174,7 @@ func (s *serviceProvider) NewSubjectsHandler() subjects.SubjectsHandler {
 	return s.subjectsHandler
 }
 
-func (s *serviceProvider) NewGradesHandler() grades.GradesHandler {
+func (s *serviceProvider) NewGradesHandler() grades.Handler {
 	if s.gradesHandler == nil {
 		s.gradesHandler = grades.NewGradesHandler(s.GradesService())
 	}
