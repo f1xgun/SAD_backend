@@ -38,7 +38,7 @@ type GroupsRepository interface {
 }
 
 type SubjectsRepository interface {
-	Create(c *fiber.Ctx, subject subjectsModels.Subject) error
+	Create(c *fiber.Ctx, subject subjectsModels.Subject) (*subjectsModels.Subject, error)
 	GetAll(c *fiber.Ctx) ([]subjectsModels.SubjectRepoModel, error)
 	GetById(c *fiber.Ctx, groupId string) (*subjectsModels.SubjectRepoModel, error)
 	DeleteSubject(c *fiber.Ctx, subjectId string) error
@@ -47,9 +47,11 @@ type SubjectsRepository interface {
 	UpdateSubject(c *fiber.Ctx, subject subjectsModels.Subject) error
 	IsSubjectInGroup(c *fiber.Ctx, subjectId, groupId string) (bool, error)
 	GetSubjectTeacherId(c *fiber.Ctx, subjectId, teacherId string) (string, error)
-	AddTeacherToSubject(c *fiber.Ctx, subjectTeacherId, subjectId, teacherId string) error
+	AddTeacherToSubject(c *fiber.Ctx, subjectId, teacherId string) error
 	GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjectsModels.SubjectInfoRepoModel, error)
 	GetSubjectsByTeacherId(c *fiber.Ctx, teacherId string) ([]subjectsModels.SubjectRepoModel, error)
+	GetNewSubjectsForTeacher(c *fiber.Ctx, teacherId string) ([]subjectsModels.SubjectRepoModel, error)
+	UpdateTeacherSubjects(c *fiber.Ctx, teacherId string, subjects []subjectsModels.Subject) error
 }
 
 type GradesRepository interface {

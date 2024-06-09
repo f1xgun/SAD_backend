@@ -19,22 +19,34 @@ func NewRepository(db *pgxpool.Pool) *repository {
 	}
 }
 
-func (r *repository) Create(c *fiber.Ctx, subject subjectsModels.Subject) error {
-	query := "INSERT INTO subjects (id, name) VALUES (@id, @name)"
+func (r *repository) Create(c *fiber.Ctx, subject subjectsModels.Subject) (*subjectsModels.Subject, error) {
+	query := "INSERT INTO subjects (name) VALUES (@name)"
 	log.Printf("Creating subject: %#v", subject)
 
 	args := pgx.NamedArgs{
-		"id":   subject.Id,
 		"name": subject.Name,
 	}
-	_, err := r.db.Exec(c.Context(), query, args)
-	if err != nil {
+
+	if _, err := r.db.Exec(c.Context(), query, args); err != nil {
 		log.Printf("Error creating subject: %#v, error: %v", subject, err)
 	} else {
 		log.Printf("Subject created successfully: %#v", subject)
 	}
 
-	return err
+	selectQuery := "SELECT id FROM subjects WHERE name = @name"
+
+	row := r.db.QueryRow(c.Context(), selectQuery, args)
+
+	err := row.Scan(&subject.Id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("Subject not found with name: %s", subject.Name)
+		return nil, nil
+	} else if err != nil {
+		log.Printf("Error fetching subject by name: %s, error: %v", subject.Name, err)
+		return nil, err
+	}
+
+	return &subject, nil
 }
 
 func (r *repository) GetAll(c *fiber.Ctx) ([]subjectsModels.SubjectRepoModel, error) {
@@ -241,17 +253,16 @@ func (r *repository) GetSubjectTeacherId(c *fiber.Ctx, subjectId, teacherId stri
 	return subjectTeacherId, nil
 }
 
-func (r *repository) AddTeacherToSubject(c *fiber.Ctx, subjectTeacherId, subjectId, teacherId string) error {
+func (r *repository) AddTeacherToSubject(c *fiber.Ctx, subjectId, teacherId string) error {
 	log.Printf("Adding teacher %s to subject %s", teacherId, subjectId)
 
 	queryForInsert := `
-	INSERT INTO subjects_teachers (id, subject_id, teacher_id) 
-	VALUES (@subjectTeacherId, @subjectId, @teacherId)
+	INSERT INTO subjects_teachers (subject_id, teacher_id) 
+	VALUES (@subjectId, @teacherId)
 	`
 	args := pgx.NamedArgs{
-		"subjectTeacherId": subjectTeacherId,
-		"subjectId":        subjectId,
-		"teacherId":        teacherId,
+		"subjectId": subjectId,
+		"teacherId": teacherId,
 	}
 
 	if _, err := r.db.Exec(c.Context(), queryForInsert, args); err != nil {
@@ -333,4 +344,100 @@ func (r *repository) GetSubjectsByTeacherId(c *fiber.Ctx, teacherId string) ([]s
 
 	log.Printf("All subjects fetched successfully")
 	return subjects, nil
+}
+
+func (r *repository) GetNewSubjectsForTeacher(c *fiber.Ctx, teacherId string) ([]subjectsModels.SubjectRepoModel, error) {
+	query := `
+		SELECT s.id, s.name
+		FROM subjects s
+		WHERE s.id NOT IN (
+			SELECT st.subject_id 
+			FROM subjects_teachers st 
+			WHERE st.teacher_id = $1
+	   );
+	`
+
+	rows, err := r.db.Query(c.Context(), query, teacherId)
+	if err != nil {
+		log.Printf("Error fetching new subjects by teacher's id: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var subjects []subjectsModels.SubjectRepoModel
+	for rows.Next() {
+		var subject subjectsModels.SubjectRepoModel
+		if err := rows.Scan(&subject.Id, &subject.Name); err != nil {
+			log.Printf("Error scanning subject: %v", err)
+			continue
+		}
+
+		if subject.Id.Valid {
+			subjects = append(subjects, subject)
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		log.Printf("Error iterating over subjects: %v", err)
+		return nil, err
+	}
+
+	log.Printf("All new subjects fetched successfully")
+	return subjects, nil
+}
+
+func (r *repository) UpdateTeacherSubjects(c *fiber.Ctx, teacherId string, subjects []subjectsModels.Subject) error {
+	tx, err := r.db.Begin(c.Context())
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err != nil {
+			if rbErr := tx.Rollback(c.Context()); rbErr != nil {
+				log.Printf("Error rolling back transaction: %v", rbErr)
+			}
+		}
+	}()
+
+	var subjectIds []string
+	for _, subject := range subjects {
+		subjectIds = append(subjectIds, subject.Id)
+	}
+
+	log.Printf("Teacher id: %v", teacherId)
+
+	deleteQuery := `
+		DELETE FROM subjects_teachers st
+		WHERE st.teacher_id = $1 AND st.subject_id NOT IN (
+            SELECT unnest($2::uuid[])
+        );
+	`
+
+	insertQuery := `
+		INSERT INTO subjects_teachers (teacher_id, subject_id)
+        SELECT $1, u.subject_id
+	  	FROM unnest(CAST($2 AS uuid[])) AS u(subject_id)
+	  	WHERE NOT EXISTS (
+			SELECT 1 FROM subjects_teachers st
+			WHERE st.teacher_id = $1 AND st.subject_id = u.subject_id
+		);
+	`
+
+	_, err = tx.Exec(c.Context(), deleteQuery, teacherId, subjectIds)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(c.Context(), insertQuery, teacherId, subjectIds)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit(c.Context())
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -13,7 +13,6 @@ import (
 	"sad/internal/utils"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/gofiber/fiber/v2"
@@ -91,7 +90,6 @@ func (s *service) Register(c *fiber.Ctx, user authModels.UserRegistrationRequest
 	}
 
 	newUser := usersModels.User{
-		Id:         uuid.New().String(),
 		LastName:   user.LastName,
 		Name:       user.Name,
 		MiddleName: user.MiddleName,

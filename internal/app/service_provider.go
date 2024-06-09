@@ -47,7 +47,7 @@ type serviceProvider struct {
 
 	groupsHandler groups.Handler
 
-	subjectsHandler subjects.SubjectsHandler
+	subjectsHandler subjects.Handler
 
 	gradesHandler grades.Handler
 
@@ -166,7 +166,7 @@ func (s *serviceProvider) NewGroupsHandler() groups.Handler {
 	return s.groupsHandler
 }
 
-func (s *serviceProvider) NewSubjectsHandler() subjects.SubjectsHandler {
+func (s *serviceProvider) NewSubjectsHandler() subjects.Handler {
 	if s.subjectsHandler == nil {
 		s.subjectsHandler = subjects.NewSubjectsHandler(s.SubjectsService())
 	}

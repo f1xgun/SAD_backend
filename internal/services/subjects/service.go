@@ -9,7 +9,6 @@ import (
 	"sad/internal/repositories"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	errorsModels "sad/internal/models/errors"
@@ -41,18 +40,12 @@ func (s *service) Create(c *fiber.Ctx, name string, teacherId string) error {
 		return errors.New("subject name is required")
 	}
 
-	if teacherId == "" {
-		return errors.New("teacher is required")
-	}
-
-	subjectId := uuid.New().String()
 	newSubject := subjectsModels.Subject{
-		Id:        subjectId,
-		Name:      name,
-		TeacherId: teacherId,
+		Name: name,
 	}
 
-	if err := s.subjectsRepository.Create(c, newSubject); err != nil {
+	createdSubject, err := s.subjectsRepository.Create(c, newSubject)
+	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			switch pgErr.Code {
@@ -66,17 +59,19 @@ func (s *service) Create(c *fiber.Ctx, name string, teacherId string) error {
 		}
 	}
 
-	subjectTeacherId := uuid.New().String()
+	if teacherId == "" {
+		return nil
+	}
 
-	if err := s.subjectsRepository.AddTeacherToSubject(c, subjectTeacherId, subjectId, teacherId); err != nil {
+	if err := s.subjectsRepository.AddTeacherToSubject(c, createdSubject.Id, teacherId); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			switch pgErr.Code {
 			case errorsModels.NeedUniqueValueErrCode:
-				log.Printf("Subject with id %s already has teacher with id %s", subjectId, teacherId)
+				log.Printf("Subject with id %s already has teacher with id %s", createdSubject.Id, teacherId)
 				return errorsModels.ErrSubjectWithThisTeacherExists
 			default:
-				log.Printf("Error add teacher with id %s to subject with id %s", teacherId, subjectId)
+				log.Printf("Error add teacher with id %s to subject with id %s", teacherId, createdSubject.Id)
 				return errorsModels.ErrServer
 			}
 		}
@@ -262,22 +257,6 @@ func (s *service) UpdateSubject(c *fiber.Ctx, subjectId string, subject subjects
 		return err
 	}
 
-	//subjectTeacherId := uuid.New().String()
-	//
-	//if err := s.subjectsRepository.AddTeacherToSubject(c, subjectTeacherId, subjectId, subject.TeacherId); err != nil {
-	//	var pgErr *pgconn.PgError
-	//	if errors.As(err, &pgErr) {
-	//		switch pgErr.Code {
-	//		case errorsModels.NeedUniqueValueErrCode:
-	//			log.Printf("Subject with id %s already has teacher with id %s", subjectId, subject.TeacherId)
-	//			return errorsModels.ErrSubjectWithThisTeacherExists
-	//		default:
-	//			log.Printf("Error add teacher with id %s to subject with id %s", subject.TeacherId, subjectId)
-	//			return errorsModels.ErrServer
-	//		}
-	//	}
-	//}
-
 	log.Printf("Subject '%s' successfully updated.", subjectId)
 	return nil
 }
@@ -322,4 +301,20 @@ func (s *service) GetSubjectsByTeacherId(c *fiber.Ctx, teacherId string) ([]subj
 	subjects := subjectsMappers.FromSubjectsRepoModelToEntity(subjectsRepo)
 
 	return subjects, err
+}
+
+func (s *service) GetNewAvailableSubjectsForTeacher(c *fiber.Ctx, teacherId string) ([]subjectsModels.Subject, error) {
+	log.Printf("Attempting to get new subjects by teacher id %v", teacherId)
+	subjectsRepo, err := s.subjectsRepository.GetNewSubjectsForTeacher(c, teacherId)
+
+	subjects := subjectsMappers.FromSubjectsRepoModelToEntity(subjectsRepo)
+
+	return subjects, err
+}
+
+func (s *service) EditTeacherSubjects(c *fiber.Ctx, teacherId string, subjects []subjectsModels.Subject) error {
+	log.Printf("Attempting to edit subjects by teacher id %v", teacherId)
+	err := s.subjectsRepository.UpdateTeacherSubjects(c, teacherId, subjects)
+
+	return err
 }

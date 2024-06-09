@@ -11,7 +11,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type SubjectsHandler interface {
+type Handler interface {
 	Create(c *fiber.Ctx) error
 	GetAll(c *fiber.Ctx) error
 	Delete(c *fiber.Ctx) error
@@ -21,13 +21,15 @@ type SubjectsHandler interface {
 	GetAvailableTeachers(c *fiber.Ctx) error
 	GetWithDetails(c *fiber.Ctx) error
 	GetSubjectsByTeacherId(c *fiber.Ctx) error
+	GetNewAvailableSubjectsForTeacher(c *fiber.Ctx) error
+	EditTeacherSubjects(c *fiber.Ctx) error
 }
 
 type subjectsHandler struct {
 	subjectsService services.SubjectsService
 }
 
-func NewSubjectsHandler(subjectsService services.SubjectsService) SubjectsHandler {
+func NewSubjectsHandler(subjectsService services.SubjectsService) Handler {
 	return &subjectsHandler{
 		subjectsService: subjectsService,
 	}
@@ -202,17 +204,49 @@ func (h *subjectsHandler) GetWithDetails(c *fiber.Ctx) error {
 }
 
 func (h *subjectsHandler) GetSubjectsByTeacherId(c *fiber.Ctx) error {
-	userID, ok := c.Locals("userID").(string)
-	if !ok {
+	teacherId := c.Query("teacher_id")
+	if teacherId == "" {
+		if selfId, ok := c.Locals("userID").(string); ok && selfId != "" {
+			teacherId = selfId
+		}
 		log.Println("Failed to assert type for userID from Locals")
-		return errorsModels.ErrServer
+		return c.Status(http.StatusBadRequest).JSON(&fiber.Map{"error": "invalid request body"})
 	}
 
-	subjects, err := h.subjectsService.GetSubjectsByTeacherId(c, userID)
+	subjects, err := h.subjectsService.GetSubjectsByTeacherId(c, teacherId)
 	if err != nil {
 		log.Printf("Failed to retrieve subjects by teacher id: %v", err)
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	return c.Status(http.StatusOK).JSON(subjects)
+}
+
+func (h *subjectsHandler) GetNewAvailableSubjectsForTeacher(c *fiber.Ctx) error {
+	teacherID := c.Query("teacher_id")
+
+	subjects, err := h.subjectsService.GetNewAvailableSubjectsForTeacher(c, teacherID)
+	if err != nil {
+		log.Printf("Failed to retrieve subjects by teacher id: %v", err)
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.Status(http.StatusOK).JSON(subjects)
+}
+
+func (h *subjectsHandler) EditTeacherSubjects(c *fiber.Ctx) error {
+	teacherID := c.Query("teacher_id")
+
+	var subjects []subjectsModels.Subject
+	if err := c.BodyParser(&subjects); err != nil {
+		return c.Status(http.StatusBadRequest).JSON(&fiber.Map{"error": "invalid request body"})
+	}
+
+	err := h.subjectsService.EditTeacherSubjects(c, teacherID, subjects)
+	if err != nil {
+		log.Printf("Failed to edit subjects: %v for teacher with id %#v", err, teacherID)
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.Status(http.StatusOK).JSON(fiber.Map{"message": "Subjects updated successfully"})
 }

@@ -64,10 +64,9 @@ func (r *repository) GetByLogin(c *fiber.Ctx, login string) (*usersModels.UserRe
 }
 
 func (r *repository) Create(c *fiber.Ctx, user usersModels.User) error {
-	query := "INSERT INTO users (uuid, last_name, name, login, password, role"
+	query := "INSERT INTO users (last_name, name, login, password, role"
 
 	args := pgx.NamedArgs{
-		"uuid":      user.Id,
 		"name":      user.Name,
 		"login":     user.Login,
 		"password":  user.Password,
@@ -80,7 +79,7 @@ func (r *repository) Create(c *fiber.Ctx, user usersModels.User) error {
 		args["middle_name"] = *user.MiddleName
 	}
 
-	query += ") VALUES (@uuid, @last_name, @name, @login, @password, @role"
+	query += ") VALUES (@last_name, @name, @login, @password, @role"
 
 	if user.MiddleName != nil {
 		query += ", @middle_name"

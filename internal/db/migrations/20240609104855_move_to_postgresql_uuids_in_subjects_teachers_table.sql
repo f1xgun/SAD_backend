@@ -1,0 +1,168 @@
+-- +goose Up
+-- +goose StatementBegin
+SELECT 'up SQL query';
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+ALTER TABLE IF EXISTS groups_subjects DROP CONSTRAINT IF EXISTS fk_subject;
+ALTER TABLE IF EXISTS subjects_teachers DROP CONSTRAINT IF EXISTS fk_subject;
+ALTER TABLE IF EXISTS grades DROP CONSTRAINT IF EXISTS fk_subject;
+
+ALTER TABLE IF EXISTS subjects
+ALTER COLUMN id TYPE UUID USING id::UUID,
+ALTER COLUMN id SET DEFAULT uuid_generate_v4();
+
+ALTER TABLE IF EXISTS subjects_teachers
+ALTER COLUMN id TYPE UUID USING id::UUID,
+ALTER COLUMN id SET DEFAULT uuid_generate_v4(),
+ALTER COLUMN subject_id TYPE UUID USING subject_id::UUID;
+
+ALTER TABLE IF EXISTS subjects_teachers
+ADD CONSTRAINT fk_subject
+FOREIGN KEY (subject_id)
+REFERENCES subjects(id)
+ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS grades
+ALTER COLUMN subject_id TYPE UUID USING subject_id::UUID;
+
+ALTER TABLE IF EXISTS grades
+ADD CONSTRAINT fk_subject
+FOREIGN KEY (subject_id)
+REFERENCES subjects(id)
+ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS groups_subjects
+ALTER COLUMN subject_teacher_id TYPE UUID USING subject_teacher_id::UUID;
+
+ALTER TABLE IF EXISTS groups_subjects
+ADD CONSTRAINT fk_subject
+FOREIGN KEY (subject_teacher_id)
+REFERENCES subjects_teachers(id)
+ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS subjects_teachers DROP CONSTRAINT IF EXISTS fk_teacher,
+ALTER COLUMN teacher_id TYPE UUID USING teacher_id::UUID;
+
+ALTER TABLE IF EXISTS grades_teachers DROP CONSTRAINT IF EXISTS fk_teacher,
+ALTER COLUMN teacher_id TYPE UUID USING teacher_id::UUID;
+
+ALTER TABLE IF EXISTS grades DROP CONSTRAINT IF EXISTS fk_student,
+ALTER COLUMN student_id TYPE UUID USING student_id::UUID;
+
+ALTER TABLE IF EXISTS users_groups DROP CONSTRAINT IF EXISTS fk_user,
+ALTER COLUMN user_id TYPE UUID USING user_id::UUID;
+
+ALTER TABLE IF EXISTS users
+ALTER COLUMN uuid TYPE UUID USING uuid::UUID,
+ALTER COLUMN uuid SET DEFAULT uuid_generate_v4();
+
+ALTER TABLE IF EXISTS users_groups
+ADD CONSTRAINT fk_user
+FOREIGN KEY (user_id)
+REFERENCES users(uuid)
+ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS grades
+ADD CONSTRAINT fk_student
+FOREIGN KEY (student_id)
+REFERENCES users(uuid)
+ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS subjects_teachers
+ADD CONSTRAINT fk_teacher
+FOREIGN KEY (teacher_id)
+REFERENCES users(uuid)
+ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS grades_teachers
+ADD CONSTRAINT fk_teacher
+FOREIGN KEY (teacher_id)
+REFERENCES users(uuid)
+ON DELETE CASCADE;
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+SELECT 'down SQL query';
+ALTER TABLE IF EXISTS subjects_teachers DROP CONSTRAINT IF EXISTS fk_subject;
+ALTER TABLE IF EXISTS grades DROP CONSTRAINT IF EXISTS fk_subject;
+ALTER TABLE IF EXISTS groups_subjects DROP CONSTRAINT IF EXISTS fk_subject;
+ALTER TABLE IF EXISTS subjects_teachers DROP CONSTRAINT IF EXISTS fk_teacher;
+ALTER TABLE IF EXISTS grades DROP CONSTRAINT IF EXISTS fk_student;
+ALTER TABLE IF EXISTS users_groups DROP CONSTRAINT IF EXISTS fk_user;
+ALTER TABLE IF EXISTS grades_teachers DROP CONSTRAINT IF EXISTS fk_teacher;
+
+
+ALTER TABLE IF EXISTS subjects
+ALTER COLUMN id TYPE VARCHAR USING id::TEXT,
+ALTER COLUMN id DROP DEFAULT;
+
+ALTER TABLE IF EXISTS subjects_teachers
+ALTER COLUMN id TYPE VARCHAR USING id::TEXT,
+ALTER COLUMN subject_id TYPE VARCHAR USING subject_id::TEXT,
+ALTER COLUMN teacher_id TYPE VARCHAR USING teacher_id::TEXT,
+ALTER COLUMN id DROP DEFAULT;
+
+ALTER TABLE IF EXISTS grades
+ALTER COLUMN subject_id TYPE VARCHAR USING subject_id::TEXT,
+ALTER COLUMN student_id TYPE VARCHAR USING student_id::TEXT;
+
+ALTER TABLE IF EXISTS groups_subjects
+ALTER COLUMN subject_teacher_id TYPE VARCHAR USING subject_teacher_id::TEXT;
+
+ALTER TABLE IF EXISTS users
+ALTER COLUMN uuid TYPE VARCHAR USING uuid::TEXT,
+ALTER COLUMN uuid DROP DEFAULT;
+
+ALTER TABLE IF EXISTS users_groups
+ALTER COLUMN user_id TYPE VARCHAR USING user_id::TEXT;
+
+ALTER TABLE IF EXISTS grades_teachers
+ALTER COLUMN teacher_id TYPE VARCHAR USING teacher_id::TEXT;
+
+-- Восстановление исходных ограничений внешних ключей
+ALTER TABLE IF EXISTS subjects_teachers
+ADD CONSTRAINT fk_subject
+FOREIGN KEY (subject_id)
+REFERENCES subjects(id)
+ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS grades
+ADD CONSTRAINT fk_subject
+FOREIGN KEY (subject_id)
+REFERENCES subjects(id)
+ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS groups_subjects
+ADD CONSTRAINT fk_subject
+FOREIGN KEY (subject_teacher_id)
+REFERENCES subjects_teachers(id)
+ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS users_groups
+ADD CONSTRAINT fk_user
+FOREIGN KEY (user_id)
+REFERENCES users(uuid)
+ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS grades
+ADD CONSTRAINT fk_student
+FOREIGN KEY (student_id)
+REFERENCES users(uuid)
+ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS subjects_teachers
+ADD CONSTRAINT fk_teacher
+FOREIGN KEY (teacher_id)
+REFERENCES users(uuid)
+ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS grades_teachers
+ADD CONSTRAINT fk_teacher
+FOREIGN KEY (teacher_id)
+REFERENCES users(uuid)
+ON DELETE CASCADE;
+
+
+DROP EXTENSION IF EXISTS "uuid-ossp";
+
+-- +goose StatementEnd

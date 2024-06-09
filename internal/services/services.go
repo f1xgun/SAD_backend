@@ -50,6 +50,8 @@ type SubjectsService interface {
 	GetAvailableTeachers(c *fiber.Ctx, teacherName string) ([]usersModels.UserInfo, error)
 	GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjectsModels.SubjectInfo, error)
 	GetSubjectsByTeacherId(c *fiber.Ctx, teacherId string) ([]subjectsModels.Subject, error)
+	GetNewAvailableSubjectsForTeacher(c *fiber.Ctx, teacherId string) ([]subjectsModels.Subject, error)
+	EditTeacherSubjects(c *fiber.Ctx, teacherId string, subjects []subjectsModels.Subject) error
 }
 
 type GradesService interface {
