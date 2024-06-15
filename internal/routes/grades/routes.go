@@ -7,7 +7,9 @@ import (
 
 func Routes(r *fiber.App, handler grades.Handler, authMiddleware interface{}, allowedRoleMiddleware interface{}) {
 	gradesApi := r.Group("/api/grades").Use(authMiddleware)
+
 	gradesApi.Get("/", handler.GetStudentGradesBySubjectAndGroup)
+	gradesApi.Get("/get_report_csv", handler.GetGradesInCsvReport).Use(allowedRoleMiddleware)
 
 	userGradeApi := gradesApi.Group("/:student_id")
 	userGradeApi.Get("/", handler.GetAllStudentGrades)

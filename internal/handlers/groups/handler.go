@@ -185,7 +185,7 @@ func (h *groupsHandler) Update(c *fiber.Ctx) error {
 
 func (h *groupsHandler) GetWithDetails(c *fiber.Ctx) error {
 	groupId := c.Params("group_id")
-	group, err := h.groupsService.GetByIdWithUsers(c, groupId)
+	group, err := h.groupsService.GetWithDetailsById(c, groupId)
 	if err != nil {
 		log.Printf("Failed to retrieve group: %v", err)
 		var status int

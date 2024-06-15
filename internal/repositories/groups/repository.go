@@ -155,7 +155,7 @@ func (r *repository) IsUserInGroup(c *fiber.Ctx, groupId, userId string) (bool, 
 	return count > 0, nil
 }
 
-func (r *repository) GetByIdWithUsers(c *fiber.Ctx, groupId string) (*groupsModels.GroupWithUsersRepo, error) {
+func (r *repository) GetWithDetailsById(c *fiber.Ctx, groupId string) (*groupsModels.GroupDetailsRepo, error) {
 	query := `
 		SELECT g.id, g.number, u.uuid, u.login, u.name, u.role, u.last_name, u.middle_name
 		FROM groups g
@@ -174,7 +174,7 @@ func (r *repository) GetByIdWithUsers(c *fiber.Ctx, groupId string) (*groupsMode
 	}
 	defer rows.Close()
 
-	var group groupsModels.GroupWithUsersRepo
+	var group groupsModels.GroupDetailsRepo
 	var users []usersModels.UserInfoRepoModel
 	for rows.Next() {
 		var groupId, groupNumber sql.NullString

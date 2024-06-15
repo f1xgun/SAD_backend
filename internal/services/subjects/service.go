@@ -33,7 +33,7 @@ func NewService(
 	}
 }
 
-func (s *service) Create(c *fiber.Ctx, name string, teacherId string) error {
+func (s *service) Create(c *fiber.Ctx, name string) error {
 	log.Println("Creating a new group with name:", name)
 
 	if name == "" {
@@ -44,8 +44,7 @@ func (s *service) Create(c *fiber.Ctx, name string, teacherId string) error {
 		Name: name,
 	}
 
-	createdSubject, err := s.subjectsRepository.Create(c, newSubject)
-	if err != nil {
+	if _, err := s.subjectsRepository.Create(c, newSubject); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			switch pgErr.Code {
@@ -54,24 +53,6 @@ func (s *service) Create(c *fiber.Ctx, name string, teacherId string) error {
 				return errorsModels.ErrSubjectExists
 			default:
 				log.Printf("Error creating subject '%s' in the repository: %s", newSubject.Name, err.Error())
-				return errorsModels.ErrServer
-			}
-		}
-	}
-
-	if teacherId == "" {
-		return nil
-	}
-
-	if err := s.subjectsRepository.AddTeacherToSubject(c, createdSubject.Id, teacherId); err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			switch pgErr.Code {
-			case errorsModels.NeedUniqueValueErrCode:
-				log.Printf("Subject with id %s already has teacher with id %s", createdSubject.Id, teacherId)
-				return errorsModels.ErrSubjectWithThisTeacherExists
-			default:
-				log.Printf("Error add teacher with id %s to subject with id %s", teacherId, createdSubject.Id)
 				return errorsModels.ErrServer
 			}
 		}
@@ -247,7 +228,7 @@ func (s *service) UpdateSubject(c *fiber.Ctx, subjectId string, subject subjects
 		if errors.As(err, &pgErr) {
 			switch pgErr.Code {
 			case errorsModels.NeedUniqueValueErrCode:
-				log.Printf("Subject with id '%s' already has teacher with id %s", subjectId, subject.TeacherId)
+				log.Printf("Subject with name '%s' already has", subject.Name)
 				return errorsModels.ErrSubjectWithThisTeacherExists
 			default:
 				log.Printf("Error updating subject '%s' in the repository: %s", subjectId, err.Error())
@@ -274,7 +255,7 @@ func (s *service) GetAvailableTeachers(c *fiber.Ctx, teacherName string) ([]user
 	return users, nil
 }
 
-func (s *service) GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjectsModels.SubjectInfo, error) {
+func (s *service) GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjectsModels.Subject, error) {
 	log.Printf("Attempting to get subject with details")
 	subjectRepo, err := s.subjectsRepository.GetByIdWithDetails(c, subjectId)
 	if err != nil {
@@ -287,7 +268,7 @@ func (s *service) GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjectsM
 		return nil, errorsModels.ErrSubjectDoesNotExist
 	}
 
-	subject := subjectsMappers.FromSubjectDetailsRepoModelToEntity(*subjectRepo)
+	subject := subjectsMappers.FromSubjectRepoModelToEntity(*subjectRepo)
 
 	log.Printf("Successfully retrieved subject with details")
 

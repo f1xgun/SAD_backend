@@ -3,6 +3,7 @@ package gradesModels
 import (
 	"database/sql"
 	usersModels "sad/internal/models/users"
+	"strconv"
 	"time"
 )
 
@@ -56,4 +57,49 @@ type UserSubjectGrades struct {
 type UserSubjectGradesRepoModel struct {
 	Student usersModels.UserInfoRepoModel
 	Grades  []GradeInfoRepoModel
+}
+
+type GradesReportRecordRepoModel struct {
+	Student     usersModels.UserInfoRepoModel
+	Teacher     usersModels.UserInfoRepoModel
+	GroupNumber sql.NullString
+	GradeInfo   GradeInfoRepoModel
+}
+
+func (m *GradesReportRecordRepoModel) ToCsvString() []string {
+	var studentMiddleName string
+	var teacherMiddleName string
+	var gradeComment string
+	gradeIsFinal := "Нет"
+
+	if m.Student.MiddleName.Valid {
+		studentMiddleName = m.Student.MiddleName.String
+	}
+
+	if m.Teacher.MiddleName.Valid {
+		teacherMiddleName = m.Teacher.MiddleName.String
+	}
+
+	if m.GradeInfo.Comment.Valid {
+		gradeComment = m.GradeInfo.Comment.String
+	}
+
+	if m.GradeInfo.IsFinal.Valid && m.GradeInfo.IsFinal.Bool {
+		gradeIsFinal = "Да"
+	}
+
+	return []string{
+		m.Student.LastName.String,
+		m.Student.Name.String,
+		studentMiddleName,
+		m.GroupNumber.String,
+		m.GradeInfo.SubjectName.String,
+		strconv.Itoa(int(m.GradeInfo.Evaluation.Int16)),
+		m.GradeInfo.CreatedAt.Time.Format("2006-01-02 15:04:05"),
+		gradeComment,
+		gradeIsFinal,
+		m.Teacher.LastName.String,
+		m.Teacher.Name.String,
+		teacherMiddleName,
+	}
 }

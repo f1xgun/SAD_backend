@@ -8,14 +8,14 @@ import (
 	"sad/internal/models/users"
 )
 
-func FromGroupWithUsersRepoModelToEntity(repoModel groupsModels.GroupWithUsersRepo) groupsModels.GroupWithUsers {
+func FromGroupDetailsRepoModelToEntity(repoModel groupsModels.GroupDetailsRepo) groupsModels.GroupDetails {
 	users := make([]usersModels.UserInfo, 0)
 	for _, userRepo := range repoModel.Users {
 		user := usersMapper.UserInfoFromRepoToService(userRepo)
 		users = append(users, user)
 	}
 
-	return groupsModels.GroupWithUsers{
+	return groupsModels.GroupDetails{
 		Group: groupsModels.Group{
 			Id:     repoModel.Id.String,
 			Number: repoModel.Number.String,

@@ -28,7 +28,7 @@ type GroupsRepository interface {
 	AddUserToGroup(c *fiber.Ctx, groupId string, userId string) error
 	DeleteUserFromGroup(c *fiber.Ctx, groupId string, userId string) error
 	IsUserInGroup(c *fiber.Ctx, groupId, userId string) (bool, error)
-	GetByIdWithUsers(c *fiber.Ctx, groupId string) (*groupsModels.GroupWithUsersRepo, error)
+	GetWithDetailsById(c *fiber.Ctx, groupId string) (*groupsModels.GroupDetailsRepo, error)
 	DeleteGroup(c *fiber.Ctx, groupId string) error
 	UpdateGroup(c *fiber.Ctx, group groupsModels.Group) error
 	CheckGroupExists(c *fiber.Ctx, groupId string) (bool, error)
@@ -48,7 +48,7 @@ type SubjectsRepository interface {
 	IsSubjectInGroup(c *fiber.Ctx, subjectId, groupId string) (bool, error)
 	GetSubjectTeacherId(c *fiber.Ctx, subjectId, teacherId string) (string, error)
 	AddTeacherToSubject(c *fiber.Ctx, subjectId, teacherId string) error
-	GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjectsModels.SubjectInfoRepoModel, error)
+	GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjectsModels.SubjectRepoModel, error)
 	GetSubjectsByTeacherId(c *fiber.Ctx, teacherId string) ([]subjectsModels.SubjectRepoModel, error)
 	GetNewSubjectsForTeacher(c *fiber.Ctx, teacherId string) ([]subjectsModels.SubjectRepoModel, error)
 	UpdateTeacherSubjects(c *fiber.Ctx, teacherId string, subjects []subjectsModels.Subject) error
@@ -61,5 +61,6 @@ type GradesRepository interface {
 	GetAllStudentGrades(c *fiber.Ctx, userId string, isFinal bool, subjectId *string) ([]gradesModels.GradeInfoRepoModel, error)
 	GetById(c *fiber.Ctx, gradeId string) (*gradesModels.GradeRepoModel, error)
 	GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId, studentId string, isFinal *bool) ([]gradesModels.UserSubjectGradesRepoModel, error)
+	GetAllGradesInfo(c *fiber.Ctx) ([]gradesModels.GradesReportRecordRepoModel, error)
 	//GetGroupGradesBySubjectId(c *fiber.Ctx, subjectId string, groupId string) ([]gradesModels.GradeRepoModel, error)
 }

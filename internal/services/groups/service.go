@@ -79,10 +79,10 @@ func (s *service) GetById(c *fiber.Ctx, groupId string) (*groupsModels.Group, er
 	return &group, nil
 }
 
-func (s *service) GetByIdWithUsers(c *fiber.Ctx, groupId string) (*groupsModels.GroupWithUsers, error) {
+func (s *service) GetWithDetailsById(c *fiber.Ctx, groupId string) (*groupsModels.GroupDetails, error) {
 	log.Printf("Retrieving group with ID: %s\n", groupId)
 
-	groupRepo, err := s.groupsRepository.GetByIdWithUsers(c, groupId)
+	groupRepo, err := s.groupsRepository.GetWithDetailsById(c, groupId)
 	if err != nil {
 		log.Printf("Error retrieving group with ID: %s, error: %v\n", groupId, err)
 		return nil, err
@@ -93,7 +93,7 @@ func (s *service) GetByIdWithUsers(c *fiber.Ctx, groupId string) (*groupsModels.
 		return nil, errorsModels.ErrGroupDoesNotExist
 	}
 
-	group := groupsMapper.FromGroupWithUsersRepoModelToEntity(*groupRepo)
+	group := groupsMapper.FromGroupDetailsRepoModelToEntity(*groupRepo)
 
 	log.Printf("Successfully retrieved group with users for group ID: %s\n", groupId)
 

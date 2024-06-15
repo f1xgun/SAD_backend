@@ -24,12 +24,7 @@ func NewRepository(db *pgxpool.Pool) *repository {
 
 func (r *repository) Create(c *fiber.Ctx, grade gradesModels.Grade) error {
 	gradesTableQuery := `
-		INSERT INTO grades (id, evaluation, subject_id, student_id, is_final, comment) 
-		VALUES (@id, @evaluation, @subject_id, @student_id, @is_final, @comment)
-	`
-	gradesTeachersQuery := `
-		INSERT INTO grades_teachers (grade_id, teacher_id) 
-		VALUES (@grade_id, @teacher_id)
+		INSERT INTO grades (id, evaluation, subject_id, student_id, is_final
 	`
 
 	gradesTableQueryArgs := pgx.NamedArgs{
@@ -38,8 +33,19 @@ func (r *repository) Create(c *fiber.Ctx, grade gradesModels.Grade) error {
 		"subject_id": grade.SubjectId,
 		"student_id": grade.StudentId,
 		"is_final":   *grade.IsFinal,
-		"comment":    *grade.Comment,
 	}
+
+	if grade.Comment != nil {
+		gradesTableQuery = fmt.Sprintf("%s, comment) VALUES (@id, @evaluation, @subject_id, @student_id, @is_final, @comment)", gradesTableQuery)
+		gradesTableQueryArgs["comment"] = *grade.Comment
+	} else {
+		gradesTableQuery = fmt.Sprintf("%s ) VALUES (@id, @evaluation, @subject_id, @student_id, @is_final)", gradesTableQuery)
+	}
+
+	gradesTeachersQuery := `
+		INSERT INTO grades_teachers (grade_id, teacher_id) 
+		VALUES (@grade_id, @teacher_id)
+	`
 
 	gradesTeachersQueryArgs := pgx.NamedArgs{
 		"grade_id":   grade.Id,
@@ -207,8 +213,7 @@ func (r *repository) GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId,
 	FROM groups gr
 	JOIN users_groups ug ON ug.group_id = gr.id
 	JOIN users u ON u.uuid = ug.user_id
-	LEFT JOIN grades g ON g.student_id = u.uuid AND g.subject_id=$2 AND g.is_final=$3
-	WHERE gr.id = $1
+	LEFT JOIN grades g ON g.student_id = u.uuid AND g.subject_id=$1
 	`
 
 	args := []interface{}{
@@ -216,12 +221,12 @@ func (r *repository) GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId,
 		groupId,
 	}
 	if isFinal != nil {
-		query = fmt.Sprintf("%s AND is_final=$3", query)
+		query = fmt.Sprintf("%s AND g.is_final=$3", query)
 		args = append(args, *isFinal)
 	}
-	query = fmt.Sprintf("%s ORDER BY uuid", query)
+	query = fmt.Sprintf("%s WHERE gr.id = $2 ORDER BY uuid;", query)
 
-	rows, err := r.db.Query(c.Context(), query, groupId, subjectId, isFinal)
+	rows, err := r.db.Query(c.Context(), query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -278,4 +283,59 @@ func (r *repository) GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId,
 
 	log.Printf("Grades %#v", usersSubjectGrades)
 	return usersSubjectGrades, nil
+}
+
+func (r *repository) GetAllGradesInfo(c *fiber.Ctx) ([]gradesModels.GradesReportRecordRepoModel, error) {
+	query := `
+		SELECT u.last_name, u.name, u.middle_name, gr.number, s.name, g.evaluation, g.created_at, g.comment, g.is_final, t.last_name, t.name, t.middle_name
+		FROM grades g
+		JOIN users u ON g.student_id = u.uuid
+		JOIN users_groups ug ON u.uuid = ug.user_id
+		JOIN groups gr ON ug.group_id = gr.id
+		JOIN subjects s ON g.subject_id = s.id
+		JOIN grades_teachers gt ON g.id = gt.grade_id
+		JOIN users t ON gt.teacher_id = t.uuid
+		ORDER BY u.last_name, u.name, u.middle_name, s.name, g.created_at
+	`
+
+	rows, err := r.db.Query(c.Context(), query)
+	if err != nil {
+		log.Printf("Error fetching all grades: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var grades []gradesModels.GradesReportRecordRepoModel
+	for rows.Next() {
+		var grade gradesModels.GradesReportRecordRepoModel
+		if err := rows.Scan(
+			&grade.Student.LastName,
+			&grade.Student.Name,
+			&grade.Student.MiddleName,
+			&grade.GroupNumber,
+			&grade.GradeInfo.SubjectName,
+			&grade.GradeInfo.Evaluation,
+			&grade.GradeInfo.CreatedAt,
+			&grade.GradeInfo.Comment,
+			&grade.GradeInfo.IsFinal,
+			&grade.Teacher.LastName,
+			&grade.Teacher.Name,
+			&grade.Teacher.MiddleName,
+		); err != nil {
+			log.Printf("Error scanning grade: %v", err)
+			continue
+		}
+		log.Printf("Grade: %#v", grade)
+		if grade.GradeInfo.Evaluation.Valid {
+			grades = append(grades, grade)
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		log.Printf("Error iterating over grades: %v", err)
+		return nil, err
+	}
+
+	log.Printf("All grades fetched successfully %#v", grades)
+	return grades, nil
 }

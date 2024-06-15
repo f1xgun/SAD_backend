@@ -30,7 +30,7 @@ type GroupsService interface {
 	Create(c *fiber.Ctx, number string) error
 	GetAll(c *fiber.Ctx) ([]groupsModels.Group, error)
 	GetById(c *fiber.Ctx, groupId string) (*groupsModels.Group, error)
-	GetByIdWithUsers(c *fiber.Ctx, groupId string) (*groupsModels.GroupWithUsers, error)
+	GetWithDetailsById(c *fiber.Ctx, groupId string) (*groupsModels.GroupDetails, error)
 	DeleteGroup(c *fiber.Ctx, groupId string) error
 	AddUserToGroup(c *fiber.Ctx, groupId string, userId string) error
 	DeleteUserFromGroup(c *fiber.Ctx, groupId string, userId string) error
@@ -41,14 +41,14 @@ type GroupsService interface {
 }
 
 type SubjectsService interface {
-	Create(c *fiber.Ctx, name string, teacherId string) error
+	Create(c *fiber.Ctx, name string) error
 	GetAll(c *fiber.Ctx) ([]subjectsModels.Subject, error)
 	DeleteSubject(c *fiber.Ctx, subjectId string) error
 	AddSubjectToGroup(c *fiber.Ctx, subjectGroup subjectsModels.SubjectGroup) error
 	DeleteSubjectFromGroup(c *fiber.Ctx, subjectId string, groupId string) error
 	UpdateSubject(c *fiber.Ctx, subjectId string, subject subjectsModels.Subject) error
 	GetAvailableTeachers(c *fiber.Ctx, teacherName string) ([]usersModels.UserInfo, error)
-	GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjectsModels.SubjectInfo, error)
+	GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjectsModels.Subject, error)
 	GetSubjectsByTeacherId(c *fiber.Ctx, teacherId string) ([]subjectsModels.Subject, error)
 	GetNewAvailableSubjectsForTeacher(c *fiber.Ctx, teacherId string) ([]subjectsModels.Subject, error)
 	EditTeacherSubjects(c *fiber.Ctx, teacherId string, subjects []subjectsModels.Subject) error
@@ -60,4 +60,5 @@ type GradesService interface {
 	Update(c *fiber.Ctx, gradeId string, evaluation *int, comment *string) error
 	GetAllStudentGrades(c *fiber.Ctx, userId string, isFinal bool, subjectId *string) ([]gradesModels.GradeInfo, error)
 	GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId, groupId string, isFinal *bool) ([]gradesModels.UserSubjectGrades, error)
+	GetGradesInCsv(c *fiber.Ctx) (string, error)
 }

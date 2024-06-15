@@ -20,12 +20,12 @@ type UserGroup struct {
 	GroupId string `json:"group_id"`
 }
 
-type GroupWithUsers struct {
+type GroupDetails struct {
 	Group
 	Users []usersModels.UserInfo `json:"users"`
 }
 
-type GroupWithUsersRepo struct {
+type GroupDetailsRepo struct {
 	GroupRepoModel
 	Users []usersModels.UserInfoRepoModel
 }

@@ -42,8 +42,7 @@ func (h *subjectsHandler) Create(c *fiber.Ctx) error {
 	}
 
 	name := body.Name
-	teacherId := body.TeacherId
-	err := h.subjectsService.Create(c, name, teacherId)
+	err := h.subjectsService.Create(c, name)
 	if err != nil {
 		var status int
 		var errMsg string
@@ -206,11 +205,12 @@ func (h *subjectsHandler) GetWithDetails(c *fiber.Ctx) error {
 func (h *subjectsHandler) GetSubjectsByTeacherId(c *fiber.Ctx) error {
 	teacherId := c.Query("teacher_id")
 	if teacherId == "" {
-		if selfId, ok := c.Locals("userID").(string); ok && selfId != "" {
-			teacherId = selfId
+		selfId, ok := c.Locals("userID").(string)
+		if !ok || selfId == "" {
+			log.Println("Failed to assert type for userID from Locals")
+			return c.Status(http.StatusBadRequest).JSON(&fiber.Map{"error": "invalid request body"})
 		}
-		log.Println("Failed to assert type for userID from Locals")
-		return c.Status(http.StatusBadRequest).JSON(&fiber.Map{"error": "invalid request body"})
+		teacherId = selfId
 	}
 
 	subjects, err := h.subjectsService.GetSubjectsByTeacherId(c, teacherId)

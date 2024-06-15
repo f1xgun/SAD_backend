@@ -10,9 +10,9 @@ import (
 	"testing"
 )
 
-func TestFromGroupWithUsersRepoModelToEntity(t *testing.T) {
+func TestFromGroupDetailsRepoModelToEntity(t *testing.T) {
 	// Подготовка тестовых данных
-	repoModel := groupsModels.GroupWithUsersRepo{
+	repoModel := groupsModels.GroupDetailsRepo{
 		GroupRepoModel: groupsModels.GroupRepoModel{
 			Id:     sql.NullString{String: "group-id", Valid: true},
 			Number: sql.NullString{String: "group-number", Valid: true},
@@ -34,7 +34,7 @@ func TestFromGroupWithUsersRepoModelToEntity(t *testing.T) {
 	}
 
 	// Вызов тестируемой функции
-	entity := groupsMapper.FromGroupWithUsersRepoModelToEntity(repoModel)
+	entity := groupsMapper.FromGroupDetailsRepoModelToEntity(repoModel)
 
 	// Проверка результатов
 	assert.Equal(t, repoModel.Id.String, entity.Group.Id)

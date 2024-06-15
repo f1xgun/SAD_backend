@@ -1,6 +1,8 @@
 package grades
 
 import (
+	"bytes"
+	"encoding/csv"
 	"errors"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -24,7 +26,7 @@ func NewService(gradesRepository repositories.GradesRepository, usersRepository 
 }
 
 func (s *service) Create(c *fiber.Ctx, grade gradesModels.Grade) error {
-	log.Println("Creating a new grade:", grade)
+	log.Printf("Creating a new grade: %#v", grade)
 
 	if grade.TeacherId == "" {
 		return errors.New("teacher_id is required")
@@ -148,4 +150,49 @@ func (s *service) GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId, gr
 	userWithGrades := gradesMapper.FromUserWithGradesRepoModelToEntity(userWithGradesRepo)
 
 	return userWithGrades, nil
+}
+
+func (s *service) GetGradesInCsv(c *fiber.Ctx) (string, error) {
+	gradesReportRecords, err := s.gradesRepository.GetAllGradesInfo(c)
+	if err != nil {
+		return "", err
+	}
+
+	var buffer bytes.Buffer
+	writer := csv.NewWriter(&buffer)
+
+	columnNames := []string{
+		"Фамилия студента",
+		"Имя студента",
+		"Отчество студента",
+		"Номер группы",
+		"Название предмета",
+		"Оценка",
+		"Дата выставления оценки",
+		"Комментарий",
+		"Итоговая ли оценка",
+		"Фамилия преподавателя",
+		"Имя преподавателя",
+		"Отчество преподавателя",
+	}
+
+	if err := writer.Write(columnNames); err != nil {
+		log.Printf("Error writing record to csv: %v", err)
+		return "", err
+	}
+
+	for _, grade := range gradesReportRecords {
+		if err := writer.Write(grade.ToCsvString()); err != nil {
+			log.Printf("Error writing record to csv: %#v", err)
+			return "", err
+		}
+	}
+
+	if err := writer.Error(); err != nil {
+		return "", err
+	}
+
+	writer.Flush()
+
+	return buffer.String(), nil
 }

@@ -3,19 +3,11 @@ package subjectsModels
 import (
 	"database/sql"
 	groupsModels "sad/internal/models/groups"
-	usersModels "sad/internal/models/users"
 )
 
 type Subject struct {
-	Id        string `json:"id"`
-	Name      string `json:"name"`
-	TeacherId string `json:"teacher_id,omitempty"`
-}
-
-type SubjectInfo struct {
-	Id      string               `json:"id"`
-	Name    string               `json:"name"`
-	Teacher usersModels.UserInfo `json:"teacher"`
+	Id   string `json:"id"`
+	Name string `json:"name"`
 }
 
 type SubjectGroup struct {
@@ -37,12 +29,6 @@ type SubjectRepoModel struct {
 type SubjectGroupRepoModel struct {
 	SubjectId sql.NullString
 	GroupId   sql.NullString
-}
-
-type SubjectInfoRepoModel struct {
-	Id      sql.NullString
-	Name    sql.NullString
-	Teacher usersModels.UserInfoRepoModel
 }
 
 type GroupsWithSubjectsRepoModel struct {

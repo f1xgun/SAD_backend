@@ -17,6 +17,7 @@ type Handler interface {
 	Update(c *fiber.Ctx) error
 	GetAllStudentGrades(c *fiber.Ctx) error
 	GetStudentGradesBySubjectAndGroup(c *fiber.Ctx) error
+	GetGradesInCsvReport(c *fiber.Ctx) error
 }
 
 type gradesHandler struct {
@@ -153,4 +154,17 @@ func (h *gradesHandler) GetStudentGradesBySubjectAndGroup(c *fiber.Ctx) error {
 	}
 
 	return c.Status(http.StatusOK).JSON(usersWithGrades)
+}
+
+func (h *gradesHandler) GetGradesInCsvReport(c *fiber.Ctx) error {
+	report, err := h.gradesService.GetGradesInCsv(c)
+
+	if err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	c.Set("Content-Type", "text/csv")
+	c.Set("Content-Disposition", "attachment; filename=\"grades_report.csv\"")
+
+	return c.Status(http.StatusOK).SendString(report)
 }
