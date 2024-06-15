@@ -15,6 +15,8 @@ type Config struct {
 
 	JwtSecret    string        `mapstructure:"JWT_SECRET"`
 	JwtExpiresIn time.Duration `mapstructure:"JWT_EXPIRED_IN"`
+
+	AllowedOrigins []string `mapstructure:"ALLOWED_ORIGINS"`
 }
 
 func LoadConfig(path string) (Config, error) {

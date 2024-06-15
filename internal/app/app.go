@@ -13,6 +13,7 @@ import (
 	"sad/internal/routes/groups"
 	"sad/internal/routes/subjects"
 	usersRoutes "sad/internal/routes/user"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
@@ -57,7 +58,17 @@ func (a *App) initDeps() {
 func (a *App) setupRouter() *fiber.App {
 	r := fiber.New()
 
-	r.Use(cors.New())
+	r.Use(cors.New(cors.Config{
+		AllowOrigins: strings.Join(a.config.AllowedOrigins, ","),
+		AllowMethods: strings.Join([]string{
+			fiber.MethodGet,
+			fiber.MethodPost,
+			fiber.MethodHead,
+			fiber.MethodPut,
+			fiber.MethodDelete,
+			fiber.MethodPatch,
+		}, ","),
+	}))
 	r.Use(recover.New(recover.Config{
 		EnableStackTrace: true,
 		StackTraceHandler: func(c *fiber.Ctx, e interface{}) {
