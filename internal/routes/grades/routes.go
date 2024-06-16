@@ -6,18 +6,19 @@ import (
 )
 
 func Routes(r *fiber.App, handler grades.Handler, authMiddleware interface{}, allowedRoleMiddleware interface{}) {
-	gradesApi := r.Group("/api/grades").Use(authMiddleware)
+	gradesBaseApi := r.Group("/api/grades").Use(authMiddleware)
 
+	gradesApi := gradesBaseApi.Group("/")
 	gradesApi.Get("/", handler.GetStudentGradesBySubjectAndGroup)
-	gradesApi.Get("/get_report_csv", handler.GetGradesInCsvReport).Use(allowedRoleMiddleware)
 
-	userGradeApi := gradesApi.Group("/:student_id")
+	userGradeApi := gradesBaseApi.Group("/student/:student_id")
 	userGradeApi.Get("/", handler.GetAllStudentGrades)
-	//userGradeApi.Get("/final", handler.GetAllStudentFinalGrades)
 
-	gradesApi.Post("/", handler.Create).Use(allowedRoleMiddleware) // Создать новую оценку
+	gradesAllowedRoleApi := gradesBaseApi.Group("/").Use(allowedRoleMiddleware)
+	gradesAllowedRoleApi.Post("/", handler.Create) // Создать новую оценку
+	gradesAllowedRoleApi.Get("/get_report_csv", handler.GetGradesInCsvReport)
 
-	gradeApi := gradesApi.Group("/:grade_id")
+	gradeApi := gradesAllowedRoleApi.Group("/:grade_id")
 	gradeApi.Delete("/", handler.Delete) // Удалить оценку по ID
 	gradeApi.Patch("/", handler.Update)  // Обновить оценку по ID
 }

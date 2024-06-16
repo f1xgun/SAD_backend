@@ -67,7 +67,7 @@ func (h *authHandler) Register(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(&fiber.Map{"error": "invalid request body"})
 	}
 
-	uuid, err := h.authService.Register(c, user)
+	err := h.authService.Register(c, user)
 
 	if err != nil {
 		var statusCode int
@@ -87,5 +87,5 @@ func (h *authHandler) Register(c *fiber.Ctx) error {
 		return c.Status(statusCode).JSON(&fiber.Map{"error": errMsg})
 	}
 
-	return c.Status(http.StatusOK).JSON(&fiber.Map{"uuid": uuid})
+	return c.SendStatus(http.StatusOK)
 }

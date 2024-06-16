@@ -58,35 +58,35 @@ func (s *service) Login(c *fiber.Ctx, user usersModels.UserCredentials) (string,
 	return token, nil
 }
 
-func (s *service) Register(c *fiber.Ctx, user authModels.UserRegistrationRequest) (string, error) {
+func (s *service) Register(c *fiber.Ctx, user authModels.UserRegistrationRequest) error {
 	log.Printf("Attempting to register new user: %s", user.Login)
 
 	if user.Login == "" {
 		log.Printf("Validation error: login is required")
-		return "", errors.New("login is required")
+		return errors.New("login is required")
 	}
 	if user.Name == "" {
 		log.Printf("Validation error: name is required")
-		return "", errors.New("name is required")
+		return errors.New("name is required")
 	}
 	if user.LastName == "" {
 		log.Printf("Validation error: last_name is required")
-		return "", errors.New("last_name is required")
+		return errors.New("last_name is required")
 	}
 
 	if user.Password == "" {
 		log.Printf("Validation error: password is required")
-		return "", errors.New("password is required")
+		return errors.New("password is required")
 	}
 	if len(user.Password) < 8 {
 		log.Printf("Validation error: password length must be more or equal 8 symbols")
-		return "", errors.New("password length must be more or equal 8 symbols")
+		return errors.New("password length must be more or equal 8 symbols")
 	}
 
 	hashedPassword, err := utils.GenerateHashPassword(user.Password)
 	if err != nil {
 		log.Printf("Error hashing password for user '%s': %s", user.Login, err.Error())
-		return "", errorsModels.ErrServer
+		return errorsModels.ErrServer
 	}
 
 	newUser := usersModels.User{
@@ -104,16 +104,16 @@ func (s *service) Register(c *fiber.Ctx, user authModels.UserRegistrationRequest
 			switch pgErr.Code {
 			case errorsModels.NeedUniqueValueErrCode:
 				log.Printf("User with login '%s' already exists", user.Login)
-				return "", errorsModels.ErrUserExists
+				return errorsModels.ErrUserExists
 			default:
 				log.Printf("Error creating user '%s' in the repository: %s", newUser.Login, err.Error())
-				return "", errorsModels.ErrServer
+				return errorsModels.ErrServer
 			}
 		}
 	}
 
 	log.Printf("User '%s' registered successfully with id: %s", newUser.Login, newUser.Id)
-	return newUser.Id, nil
+	return nil
 }
 
 func (s *service) GetJWTToken(uuid string) (string, error) {

@@ -7,21 +7,23 @@ import (
 )
 
 func Routes(r *fiber.App, handler subjects.Handler, authMiddleware interface{}, allowedRolesMiddleware interface{}) {
-	subjectApi := r.Group("/api/subjects").Use(authMiddleware)
+	subjectBaseApi := r.Group("/api/subjects").Use(authMiddleware)
 
-	subjectApi.Get("/", handler.GetAll)                                                                                     // Получить список всех предметов
-	subjectApi.Get("/get_by_teacher_id", handler.GetSubjectsByTeacherId)                                                    // Получить список предеметов, преподаваемых преподавателем
-	subjectApi.Post("/", handler.Create).Use(allowedRolesMiddleware)                                                        // Создать новый предмет
-	subjectApi.Get("/available_teachers", handler.GetAvailableTeachers)                                                     // Получить преподавателей
-	subjectApi.Get("/get_new_available_for_teacher", handler.GetNewAvailableSubjectsForTeacher).Use(allowedRolesMiddleware) // Получить список предметов, которые можно назначить преподавателю
-	subjectApi.Patch("/edit_teacher_subjects", handler.EditTeacherSubjects).Use(allowedRolesMiddleware)                     // Изменить список преподаваемых дисциплин у преподавателя
+	subjectBaseApi.Get("/", handler.GetAll)                                  // Получить список всех предметов
+	subjectBaseApi.Get("/get_by_teacher_id", handler.GetSubjectsByTeacherId) // Получить список предеметов, преподаваемых преподавателем
 
-	subject := subjectApi.Group("/:subject_id")
+	subjectApi := subjectBaseApi.Group("/:subject_id")
+	subjectApi.Get("/details", handler.GetWithDetails)
 
-	subject.Get("/details", handler.GetWithDetails)
-	subject.Delete("/", handler.Delete).Use(allowedRolesMiddleware)    // Удалить предмет по ID
-	subject.Patch("/edit", handler.Update).Use(allowedRolesMiddleware) // Обновить предмет по ID
+	subjectAllowedRolesApi := subjectBaseApi.Group("/").Use(allowedRolesMiddleware)
+	subjectAllowedRolesApi.Post("/", handler.Create)                                                        // Создать новый предмет
+	subjectAllowedRolesApi.Get("/available_teachers", handler.GetAvailableTeachers)                         // Получить преподавателей
+	subjectAllowedRolesApi.Get("/get_new_available_for_teacher", handler.GetNewAvailableSubjectsForTeacher) // Получить список предметов, которые можно назначить преподавателю
+	subjectAllowedRolesApi.Patch("/edit_teacher_subjects", handler.EditTeacherSubjects)                     // Изменить список преподаваемых дисциплин у преподавателя
 
-	subject.Post("/groups", handler.AddSubjectToGroup).Use(allowedRolesMiddleware)        // Добавить предмет для группы
-	subject.Delete("/groups", handler.DeleteSubjectFromGroup).Use(allowedRolesMiddleware) // Удалить предмет у группы
+	subjectApi.Delete("/", handler.Delete)    // Удалить предмет по ID
+	subjectApi.Patch("/edit", handler.Update) // Обновить предмет по ID
+
+	subjectApi.Post("/groups", handler.AddSubjectToGroup)        // Добавить предмет для группы
+	subjectApi.Delete("/groups", handler.DeleteSubjectFromGroup) // Удалить предмет у группы
 }

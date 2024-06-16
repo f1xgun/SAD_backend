@@ -15,7 +15,7 @@ import (
 
 type AuthService interface {
 	Login(c *fiber.Ctx, user usersModels.UserCredentials) (string, error)
-	Register(c *fiber.Ctx, user authModels.UserRegistrationRequest) (string, error)
+	Register(c *fiber.Ctx, user authModels.UserRegistrationRequest) error
 }
 
 type UserService interface {
