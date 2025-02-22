@@ -3,10 +3,10 @@ package auth
 import (
 	"sad/internal/handlers/auth"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/go-chi/chi/v5"
 )
 
-func Routes(r *fiber.App, handler auth.AuthHandler) {
-	r.Post("/api/login", handler.Login)
-	r.Post("/api/register", handler.Register)
+func Routes(r *chi.Mux, handler auth.AuthHandler) {
+	r.Post("/login", handler.Login)
+	r.Post("/register", handler.Register)
 }

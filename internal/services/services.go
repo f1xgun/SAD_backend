@@ -1,64 +1,63 @@
 package services
 
 import (
-	"sad/internal/models/auth"
+	"context"
+	authModels "sad/internal/models/auth"
 	gradesModels "sad/internal/models/grades"
 
-	"sad/internal/models/users"
+	usersModels "sad/internal/models/users"
 
-	"sad/internal/models/groups"
+	groupsModels "sad/internal/models/groups"
 
-	"sad/internal/models/subjects"
-
-	"github.com/gofiber/fiber/v2"
+	subjectsModels "sad/internal/models/subjects"
 )
 
 type AuthService interface {
-	Login(c *fiber.Ctx, user usersModels.UserCredentials) (string, error)
-	Register(c *fiber.Ctx, user authModels.UserRegistrationRequest) error
+	Login(ctx context.Context, user usersModels.UserCredentials) (string, error)
+	Register(ctx context.Context, user authModels.UserRegistrationRequest) error
 }
 
 type UserService interface {
-	EditUser(c *fiber.Ctx, userId string, newRole usersModels.UserRole, newName string) error
-	CheckIsUserRoleAllowed(c *fiber.Ctx, allowedRoles []usersModels.UserRole, userId string) (bool, error)
-	GetUserInfo(c *fiber.Ctx, userId string) (*usersModels.UserInfo, error)
-	GetUsersInfo(c *fiber.Ctx) ([]usersModels.UserInfo, error)
-	DeleteUser(c *fiber.Ctx, userId string) error
+	EditUser(ctx context.Context, userId string, newRole usersModels.UserRole, newName string) error
+	CheckIsUserRoleAllowed(ctx context.Context, allowedRoles []usersModels.UserRole, userId string) (bool, error)
+	GetUserInfo(ctx context.Context, userId string) (*usersModels.UserInfo, error)
+	GetUsersInfo(ctx context.Context) ([]usersModels.UserInfo, error)
+	DeleteUser(ctx context.Context, userId string) error
 }
 
 type GroupsService interface {
-	Create(c *fiber.Ctx, number string) error
-	GetAll(c *fiber.Ctx) ([]groupsModels.Group, error)
-	GetById(c *fiber.Ctx, groupId string) (*groupsModels.Group, error)
-	GetWithDetailsById(c *fiber.Ctx, groupId string) (*groupsModels.GroupDetails, error)
-	DeleteGroup(c *fiber.Ctx, groupId string) error
-	AddUserToGroup(c *fiber.Ctx, groupId string, userId string) error
-	DeleteUserFromGroup(c *fiber.Ctx, groupId string, userId string) error
-	UpdateGroup(c *fiber.Ctx, groupId string, group groupsModels.Group) error
-	GetAvailableNewUsers(c *fiber.Ctx, groupId, login string) ([]usersModels.UserInfo, error)
-	GetGroupsWithSubjectsByTeacher(c *fiber.Ctx, teacherId string) ([]subjectsModels.GroupsWithSubjects, error)
-	GetGroupsBySubjectAndTeacher(c *fiber.Ctx, teacherId, subjectId string) ([]groupsModels.Group, error)
+	Create(ctx context.Context, number string) error
+	GetAll(ctx context.Context) ([]groupsModels.Group, error)
+	GetById(ctx context.Context, groupId string) (*groupsModels.Group, error)
+	GetWithDetailsById(ctx context.Context, groupId string) (*groupsModels.GroupDetails, error)
+	DeleteGroup(ctx context.Context, groupId string) error
+	AddUserToGroup(ctx context.Context, groupId string, userId string) error
+	DeleteUserFromGroup(ctx context.Context, groupId string, userId string) error
+	UpdateGroup(ctx context.Context, groupId string, group groupsModels.Group) error
+	GetAvailableNewUsers(ctx context.Context, groupId, login string) ([]usersModels.UserInfo, error)
+	GetGroupsWithSubjectsByTeacher(ctx context.Context, teacherId string) ([]subjectsModels.GroupsWithSubjects, error)
+	GetGroupsBySubjectAndTeacher(ctx context.Context, teacherId, subjectId string) ([]groupsModels.Group, error)
 }
 
 type SubjectsService interface {
-	Create(c *fiber.Ctx, name string) error
-	GetAll(c *fiber.Ctx) ([]subjectsModels.Subject, error)
-	DeleteSubject(c *fiber.Ctx, subjectId string) error
-	AddSubjectToGroup(c *fiber.Ctx, subjectGroup subjectsModels.SubjectGroup) error
-	DeleteSubjectFromGroup(c *fiber.Ctx, subjectId string, groupId string) error
-	UpdateSubject(c *fiber.Ctx, subjectId string, subject subjectsModels.Subject) error
-	GetAvailableTeachers(c *fiber.Ctx, teacherName string) ([]usersModels.UserInfo, error)
-	GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjectsModels.Subject, error)
-	GetSubjectsByTeacherId(c *fiber.Ctx, teacherId string) ([]subjectsModels.Subject, error)
-	GetNewAvailableSubjectsForTeacher(c *fiber.Ctx, teacherId string) ([]subjectsModels.Subject, error)
-	EditTeacherSubjects(c *fiber.Ctx, teacherId string, subjects []subjectsModels.Subject) error
+	Create(ctx context.Context, name string) error
+	GetAll(ctx context.Context) ([]subjectsModels.Subject, error)
+	DeleteSubject(ctx context.Context, subjectId string) error
+	AddSubjectToGroup(ctx context.Context, subjectGroup subjectsModels.SubjectGroup) error
+	DeleteSubjectFromGroup(ctx context.Context, subjectId string, groupId string) error
+	UpdateSubject(ctx context.Context, subjectId string, subject subjectsModels.Subject) error
+	GetAvailableTeachers(ctx context.Context, teacherName string) ([]usersModels.UserInfo, error)
+	GetByIdWithDetails(ctx context.Context, subjectId string) (*subjectsModels.Subject, error)
+	GetSubjectsByTeacherId(ctx context.Context, teacherId string) ([]subjectsModels.Subject, error)
+	GetNewAvailableSubjectsForTeacher(ctx context.Context, teacherId string) ([]subjectsModels.Subject, error)
+	EditTeacherSubjects(ctx context.Context, teacherId string, subjects []subjectsModels.Subject) error
 }
 
 type GradesService interface {
-	Create(c *fiber.Ctx, grade gradesModels.Grade) error
-	Delete(c *fiber.Ctx, gradeId string) error
-	Update(c *fiber.Ctx, gradeId string, evaluation *int, comment *string) error
-	GetAllStudentGrades(c *fiber.Ctx, userId string, isFinal bool, subjectId *string) ([]gradesModels.GradeInfo, error)
-	GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId, groupId string, isFinal *bool) ([]gradesModels.UserSubjectGrades, error)
-	GetGradesInCsv(c *fiber.Ctx) (string, error)
+	Create(ctx context.Context, grade gradesModels.Grade) error
+	Delete(ctx context.Context, gradeId string) error
+	Update(ctx context.Context, gradeId string, evaluation *int, comment *string) error
+	GetAllStudentGrades(ctx context.Context, userId string, isFinal bool, subjectId *string) ([]gradesModels.GradeInfo, error)
+	GetStudentsGradesBySubjectAndGroup(ctx context.Context, subjectId, groupId string, isFinal *bool) ([]gradesModels.UserSubjectGrades, error)
+	GetGradesInCsv(ctx context.Context) (string, error)
 }

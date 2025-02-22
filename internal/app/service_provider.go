@@ -1,14 +1,17 @@
 package app
 
 import (
-	"github.com/jackc/pgx/v5/pgxpool"
+	"log/slog"
 	"sad/internal/config"
 	"sad/internal/db"
 	"sad/internal/handlers/auth"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"sad/internal/handlers/grades"
 	"sad/internal/handlers/groups"
 	"sad/internal/handlers/subjects"
-	"sad/internal/handlers/user"
+	users "sad/internal/handlers/user"
 	"sad/internal/repositories"
 	gradesRepository "sad/internal/repositories/grades"
 	groupsRepository "sad/internal/repositories/groups"
@@ -49,12 +52,14 @@ type serviceProvider struct {
 
 	subjectsHandler subjects.Handler
 
-	gradesHandler grades.Handler
+	gradesHandler grades.GradesHandler
 
 	db *pgxpool.Pool
+
+	logger *slog.Logger
 }
 
-func newServiceProvider(config config.Config) (*serviceProvider, error) {
+func newServiceProvider(config config.Config, logger *slog.Logger) (*serviceProvider, error) {
 	database, err := db.NewDBConnection(config)
 
 	if err != nil {
@@ -62,7 +67,8 @@ func newServiceProvider(config config.Config) (*serviceProvider, error) {
 	}
 
 	return &serviceProvider{
-		db: database,
+		db:     database,
+		logger: logger,
 	}, nil
 }
 
@@ -136,7 +142,10 @@ func (s *serviceProvider) SubjectsService() services.SubjectsService {
 
 func (s *serviceProvider) GradesService() services.GradesService {
 	if s.gradesService == nil {
-		s.gradesService = gradesService.NewService(s.GradesRepository(), s.UserRepository())
+		s.gradesService = gradesService.NewService(
+			s.GradesRepository(),
+			s.UserRepository(),
+		)
 	}
 
 	return s.gradesService
@@ -144,7 +153,7 @@ func (s *serviceProvider) GradesService() services.GradesService {
 
 func (s *serviceProvider) NewAuthHandler() auth.AuthHandler {
 	if s.authHandler == nil {
-		s.authHandler = auth.NewAuthHandler(s.AuthService())
+		s.authHandler = auth.NewAuthHandler(s.logger, s.AuthService())
 	}
 
 	return s.authHandler
@@ -152,7 +161,7 @@ func (s *serviceProvider) NewAuthHandler() auth.AuthHandler {
 
 func (s *serviceProvider) NewUserHandler() users.UserHandler {
 	if s.userHandler == nil {
-		s.userHandler = users.NewUserHandler(s.UserService())
+		s.userHandler = users.NewUserHandler(s.logger, s.UserService())
 	}
 
 	return s.userHandler
@@ -160,7 +169,7 @@ func (s *serviceProvider) NewUserHandler() users.UserHandler {
 
 func (s *serviceProvider) NewGroupsHandler() groups.Handler {
 	if s.groupsHandler == nil {
-		s.groupsHandler = groups.NewGroupsHandler(s.GroupsService())
+		s.groupsHandler = groups.NewGroupsHandler(s.logger, s.GroupsService())
 	}
 
 	return s.groupsHandler
@@ -168,15 +177,18 @@ func (s *serviceProvider) NewGroupsHandler() groups.Handler {
 
 func (s *serviceProvider) NewSubjectsHandler() subjects.Handler {
 	if s.subjectsHandler == nil {
-		s.subjectsHandler = subjects.NewSubjectsHandler(s.SubjectsService())
+		s.subjectsHandler = subjects.NewSubjectsHandler(s.logger, s.SubjectsService())
 	}
 
 	return s.subjectsHandler
 }
 
-func (s *serviceProvider) NewGradesHandler() grades.Handler {
+func (s *serviceProvider) NewGradesHandler() grades.GradesHandler {
 	if s.gradesHandler == nil {
-		s.gradesHandler = grades.NewGradesHandler(s.GradesService())
+		s.gradesHandler = grades.NewGradesHandler(
+			s.logger,
+			s.GradesService(),
+		)
 	}
 
 	return s.gradesHandler

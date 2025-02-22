@@ -1,30 +1,38 @@
 package app
 
 import (
-	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/fiber/v2/middleware/logger"
+	"encoding/json"
 	"log"
+	"log/slog"
+	"net/http"
+	"os"
 	"sad/internal/config"
-	middleware "sad/internal/middlewares/auth"
-	"sad/internal/middlewares/users"
-	usersModels "sad/internal/models/users"
 	"sad/internal/routes/auth"
 	"sad/internal/routes/grades"
 	"sad/internal/routes/groups"
 	"sad/internal/routes/subjects"
-	usersRoutes "sad/internal/routes/user"
-	"strings"
+	users "sad/internal/routes/user"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/recover"
+	authMiddlewares "sad/internal/middlewares/auth"
+	"sad/internal/middlewares/logger"
+
+	usersMiddlewares "sad/internal/middlewares/users"
+	usersModels "sad/internal/models/users"
+	slogpretty "sad/internal/utils/logger"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/rs/cors"
 )
 
 type App struct {
 	serviceProvider *serviceProvider
 
-	router *fiber.App
-
 	config config.Config
+
+	logger *slog.Logger
+
+	routerChi *chi.Mux
 }
 
 func NewApp() (*App, error) {
@@ -38,13 +46,38 @@ func NewApp() (*App, error) {
 
 	app.config = loadedConfig
 
+	app.logger = setupLogger(app.config.Environment)
+
 	app.initDeps()
 
 	return app, nil
 }
 
+func (a *App) CloseDBConnection() {
+	a.serviceProvider.db.Close()
+}
+
+func (a *App) RunServer() error {
+	a.logger.Info("starting server", slog.String("address", a.config.Address))
+	srv := &http.Server{
+		Addr:         a.config.Address,
+		Handler:      a.routerChi,
+		ReadTimeout:  a.config.Timeout,
+		WriteTimeout: a.config.Timeout,
+		IdleTimeout:  a.config.IdleTimeout,
+	}
+
+	if err := srv.ListenAndServe(); err != nil {
+		a.logger.Error("failed to start server")
+		return err
+	}
+
+	a.logger.Error("server stopped")
+	return nil
+}
+
 func (a *App) initDeps() {
-	serviceProvider, err := newServiceProvider(a.config)
+	serviceProvider, err := newServiceProvider(a.config, a.logger)
 
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %s", err.Error())
@@ -52,95 +85,112 @@ func (a *App) initDeps() {
 	}
 
 	a.serviceProvider = serviceProvider
-	a.router = a.setupRouter()
+	a.routerChi = a.setupRouterChi()
 }
 
-func (a *App) setupRouter() *fiber.App {
-	r := fiber.New()
+type ValidationError struct {
+	Message string `json:"message"`
+}
 
-	r.Use(cors.New(cors.Config{
-		AllowOrigins: strings.Join(a.config.AllowedOrigins, ","),
-		AllowMethods: strings.Join([]string{
-			fiber.MethodGet,
-			fiber.MethodPost,
-			fiber.MethodHead,
-			fiber.MethodPut,
-			fiber.MethodDelete,
-			fiber.MethodPatch,
-		}, ","),
-	}))
-	r.Use(recover.New(recover.Config{
-		EnableStackTrace: true,
-		StackTraceHandler: func(c *fiber.Ctx, e interface{}) {
-			log.Printf("Unhandled error occurred: %v", e)
-			err := c.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
-			if err != nil {
-				log.Printf("Error %v", err)
-			}
-		},
-	}))
-	r.Use(logger.New())
+func (a *App) setupRouterChi() *chi.Mux {
+	router := chi.NewRouter()
 
-	authHandler := a.serviceProvider.NewAuthHandler()
+	router.Use(middleware.RequestID)
+	router.Use(logger.New(a.logger))
+	router.Use(middleware.Recoverer)
+	router.Use(middleware.URLFormat)
 
-	auth.Routes(r, authHandler)
+	c := cors.New(cors.Options{
+		AllowedOrigins: a.config.AllowedOrigins,
+		Debug:          a.config.Environment == config.Local,
+		AllowedHeaders: []string{"Content-Type", "Authorization"},
+	})
 
-	userHandler := a.serviceProvider.NewUserHandler()
+	router.Use(c.Handler)
 
-	authMiddleware := middleware.NewAuthMiddleware(a.config)
+	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
 
-	adminMiddleware := users.AllowedRoleMiddleware(
-		a.serviceProvider.userService,
+		err := json.NewEncoder(w).Encode(ValidationError{
+			Message: "Not found",
+		})
+
+		if err != nil {
+			return
+		}
+	})
+
+	setupApiRoutes(router, a.serviceProvider, a.config, a.logger)
+
+	return router
+}
+
+func setupApiRoutes(router *chi.Mux, serviceProvider *serviceProvider, config config.Config, logger *slog.Logger) {
+	apiRouter := chi.NewRouter()
+
+	authHandler := serviceProvider.NewAuthHandler()
+
+	auth.Routes(apiRouter, authHandler)
+
+	usersHandler := serviceProvider.NewUserHandler()
+
+	authMiddleware := authMiddlewares.NewAuthMiddleware(config, logger)
+
+	adminMiddleware := usersMiddlewares.AllowedRoleMiddleware(
+		serviceProvider.userService,
 		[]usersModels.UserRole{usersModels.Admin},
+		logger,
 	)
 
-	teacherAndAdminMiddleware := users.AllowedRoleMiddleware(
-		a.serviceProvider.userService,
+	teacherAndAdminMiddleware := usersMiddlewares.AllowedRoleMiddleware(
+		serviceProvider.userService,
 		[]usersModels.UserRole{usersModels.Admin, usersModels.Teacher},
+		logger,
 	)
 
-	usersRoutes.Routes(
-		r,
-		userHandler,
-		authMiddleware,
-		adminMiddleware,
-	)
+	users.Routes(apiRouter, usersHandler, authMiddleware, adminMiddleware)
 
-	groupsHandler := a.serviceProvider.NewGroupsHandler()
+	gradesHandler := serviceProvider.NewGradesHandler()
 
-	groups.Routes(
-		r,
-		groupsHandler,
-		authMiddleware,
-		adminMiddleware,
-	)
+	grades.Routes(apiRouter, gradesHandler, authMiddleware, teacherAndAdminMiddleware)
+	
+	groupsHandler := serviceProvider.NewGroupsHandler()
+	
+	groups.Routes(apiRouter, groupsHandler, authMiddleware, adminMiddleware)
+	
+	subjectsHandler := serviceProvider.NewSubjectsHandler()
+	
+	subjects.Routes(apiRouter, subjectsHandler, authMiddleware, adminMiddleware)
 
-	subjectsHandler := a.serviceProvider.NewSubjectsHandler()
-
-	subjects.Routes(
-		r,
-		subjectsHandler,
-		authMiddleware,
-		adminMiddleware,
-	)
-
-	gradesHandler := a.serviceProvider.NewGradesHandler()
-
-	grades.Routes(
-		r,
-		gradesHandler,
-		authMiddleware,
-		teacherAndAdminMiddleware,
-	)
-
-	return r
+	router.Mount("/api", apiRouter)
 }
 
-func (a *App) Run() error {
-	err := a.router.Listen(":8080")
-	return err
+func setupLogger(env config.Env) *slog.Logger {
+	var log *slog.Logger
+
+	switch env {
+	case config.Local:
+		log = setupPrettySlog()
+	case config.Dev:
+		log = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	case config.Prod:
+		log = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	default:
+		log = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	}
+
+	return log
 }
 
-func (a *App) CloseDBConnection() {
-	a.serviceProvider.db.Close()
+func setupPrettySlog() *slog.Logger {
+	opts := slogpretty.PrettyHandlerOptions{
+		SlogOpts: &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		},
+	}
+
+	handler := opts.NewPrettyHandler(os.Stdout)
+
+	return slog.New(handler)
 }

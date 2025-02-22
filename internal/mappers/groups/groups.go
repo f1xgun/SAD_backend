@@ -2,14 +2,14 @@ package groupsMapper
 
 import (
 	subjectsMappers "sad/internal/mappers/subjects"
-	"sad/internal/mappers/users"
-	"sad/internal/models/groups"
+	usersMapper "sad/internal/mappers/users"
+	groupsModels "sad/internal/models/groups"
 	subjectsModels "sad/internal/models/subjects"
 	"sad/internal/models/users"
 )
 
 func FromGroupDetailsRepoModelToEntity(repoModel groupsModels.GroupDetailsRepo) groupsModels.GroupDetails {
-	users := make([]usersModels.UserInfo, 0)
+	users := make([]users.UserInfo, 0)
 	for _, userRepo := range repoModel.Users {
 		user := usersMapper.UserInfoFromRepoToService(userRepo)
 		users = append(users, user)

@@ -2,15 +2,16 @@ package grades
 
 import (
 	"bytes"
+	"context"
 	"encoding/csv"
 	"errors"
-	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 	"log"
 	gradesMapper "sad/internal/mappers/grades"
 	errorsModels "sad/internal/models/errors"
 	gradesModels "sad/internal/models/grades"
 	"sad/internal/repositories"
+
+	"github.com/google/uuid"
 )
 
 type service struct {
@@ -25,7 +26,7 @@ func NewService(gradesRepository repositories.GradesRepository, usersRepository 
 	}
 }
 
-func (s *service) Create(c *fiber.Ctx, grade gradesModels.Grade) error {
+func (s *service) Create(ctx context.Context, grade gradesModels.Grade) error {
 	log.Printf("Creating a new grade: %#v", grade)
 
 	if grade.TeacherId == "" {
@@ -50,7 +51,7 @@ func (s *service) Create(c *fiber.Ctx, grade gradesModels.Grade) error {
 		TeacherId:  grade.TeacherId,
 	}
 
-	if err := s.gradesRepository.Create(c, newGrade); err != nil {
+	if err := s.gradesRepository.Create(ctx, newGrade); err != nil {
 		log.Printf("Error creating grade '%s' in the repository: %s", newGrade.Id, err.Error())
 		return errorsModels.ErrServer
 	}
@@ -58,10 +59,10 @@ func (s *service) Create(c *fiber.Ctx, grade gradesModels.Grade) error {
 	return nil
 }
 
-func (s *service) Delete(c *fiber.Ctx, gradeId string) error {
+func (s *service) Delete(ctx context.Context, gradeId string) error {
 	log.Printf("Attempting to delete grade '%s'.", gradeId)
 
-	grade, err := s.gradesRepository.GetById(c, gradeId)
+	grade, err := s.gradesRepository.GetById(ctx, gradeId)
 	if err != nil {
 		log.Printf("Error retrieving grade '%s': %v", gradeId, err)
 		return err
@@ -72,7 +73,7 @@ func (s *service) Delete(c *fiber.Ctx, gradeId string) error {
 		return errorsModels.ErrGradeDoesNotExist
 	}
 
-	if err := s.gradesRepository.Delete(c, gradeId); err != nil {
+	if err := s.gradesRepository.Delete(ctx, gradeId); err != nil {
 		log.Printf("Error deleting grade '%s': %v", gradeId, err)
 		return err
 	}
@@ -81,10 +82,10 @@ func (s *service) Delete(c *fiber.Ctx, gradeId string) error {
 	return nil
 }
 
-func (s *service) Update(c *fiber.Ctx, gradeId string, evaluation *int, comment *string) error {
+func (s *service) Update(ctx context.Context, gradeId string, evaluation *int, comment *string) error {
 	log.Printf("Attempting to update grade '%s'.", gradeId)
 
-	existedGrade, err := s.gradesRepository.GetById(c, gradeId)
+	existedGrade, err := s.gradesRepository.GetById(ctx, gradeId)
 	if err != nil {
 		log.Printf("Error retrieving grade '%s': %v", gradeId, err)
 		return err
@@ -105,7 +106,7 @@ func (s *service) Update(c *fiber.Ctx, gradeId string, evaluation *int, comment 
 		updatedExistedGrade.Comment = comment
 	}
 
-	if err := s.gradesRepository.Update(c, updatedExistedGrade); err != nil {
+	if err := s.gradesRepository.Update(ctx, updatedExistedGrade); err != nil {
 		log.Printf("Error updating grade '%s': %v", gradeId, err)
 		return err
 	}
@@ -114,10 +115,10 @@ func (s *service) Update(c *fiber.Ctx, gradeId string, evaluation *int, comment 
 	return nil
 }
 
-func (s *service) GetAllStudentGrades(c *fiber.Ctx, studentId string, isFinal bool, subjectId *string) ([]gradesModels.GradeInfo, error) {
+func (s *service) GetAllStudentGrades(ctx context.Context, studentId string, isFinal bool, subjectId *string) ([]gradesModels.GradeInfo, error) {
 	log.Printf("Attemting to get student's with id '%s' grades", studentId)
 
-	isUserExist, err := s.usersRepository.CheckUserExists(c, studentId)
+	isUserExist, err := s.usersRepository.CheckUserExists(ctx, studentId)
 	if err != nil {
 		log.Printf("Error retrieving student with id '%s'", studentId)
 		return nil, errorsModels.ErrServer
@@ -128,7 +129,7 @@ func (s *service) GetAllStudentGrades(c *fiber.Ctx, studentId string, isFinal bo
 		return nil, errorsModels.ErrUserDoesNotExist
 	}
 
-	gradesRepo, err := s.gradesRepository.GetAllStudentGrades(c, studentId, isFinal, subjectId)
+	gradesRepo, err := s.gradesRepository.GetAllStudentGrades(ctx, studentId, isFinal, subjectId)
 
 	if err != nil {
 		log.Printf("Error retrieving grades")
@@ -140,8 +141,8 @@ func (s *service) GetAllStudentGrades(c *fiber.Ctx, studentId string, isFinal bo
 	return grades, nil
 }
 
-func (s *service) GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId, groupId string, isFinal *bool) ([]gradesModels.UserSubjectGrades, error) {
-	userWithGradesRepo, err := s.gradesRepository.GetStudentsGradesBySubjectAndGroup(c, subjectId, groupId, isFinal)
+func (s *service) GetStudentsGradesBySubjectAndGroup(ctx context.Context, subjectId, groupId string, isFinal *bool) ([]gradesModels.UserSubjectGrades, error) {
+	userWithGradesRepo, err := s.gradesRepository.GetStudentsGradesBySubjectAndGroup(ctx, subjectId, groupId, isFinal)
 
 	if err != nil {
 		return nil, err
@@ -152,8 +153,8 @@ func (s *service) GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId, gr
 	return userWithGrades, nil
 }
 
-func (s *service) GetGradesInCsv(c *fiber.Ctx) (string, error) {
-	gradesReportRecords, err := s.gradesRepository.GetAllGradesInfo(c)
+func (s *service) GetGradesInCsv(ctx context.Context) (string, error) {
+	gradesReportRecords, err := s.gradesRepository.GetAllGradesInfo(ctx)
 	if err != nil {
 		return "", err
 	}

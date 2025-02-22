@@ -1,14 +1,15 @@
 package grades
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	gradesModels "sad/internal/models/grades"
 	usersModels "sad/internal/models/users"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/jackc/pgx/v5"
 )
 
@@ -22,7 +23,7 @@ func NewRepository(db *pgxpool.Pool) *repository {
 	}
 }
 
-func (r *repository) Create(c *fiber.Ctx, grade gradesModels.Grade) error {
+func (r *repository) Create(ctx context.Context, grade gradesModels.Grade) error {
 	gradesTableQuery := `
 		INSERT INTO grades (id, evaluation, subject_id, student_id, is_final
 	`
@@ -43,7 +44,7 @@ func (r *repository) Create(c *fiber.Ctx, grade gradesModels.Grade) error {
 	}
 
 	gradesTeachersQuery := `
-		INSERT INTO grades_teachers (grade_id, teacher_id) 
+		INSERT INTO grades_teachers (grade_id, teacher_id)
 		VALUES (@grade_id, @teacher_id)
 	`
 
@@ -54,30 +55,30 @@ func (r *repository) Create(c *fiber.Ctx, grade gradesModels.Grade) error {
 
 	log.Printf("Creating grade: %#v", grade)
 
-	tx, err := r.db.Begin(c.Context())
+	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 
 	defer func() {
 		if err != nil {
-			if rbErr := tx.Rollback(c.Context()); rbErr != nil {
+			if rbErr := tx.Rollback(ctx); rbErr != nil {
 				log.Printf("Error rolling back transaction: %v", rbErr)
 			}
 		}
 	}()
 
-	if _, err = tx.Exec(c.Context(), gradesTableQuery, gradesTableQueryArgs); err != nil {
+	if _, err = tx.Exec(ctx, gradesTableQuery, gradesTableQueryArgs); err != nil {
 		log.Printf("Error creating grade: %#v, error: %v", grade, err)
 		return err
 	}
 
-	if _, err = tx.Exec(c.Context(), gradesTeachersQuery, gradesTeachersQueryArgs); err != nil {
+	if _, err = tx.Exec(ctx, gradesTeachersQuery, gradesTeachersQueryArgs); err != nil {
 		log.Printf("Error add new record in grade_teachers error: %v", err)
 		return err
 	}
 
-	if err = tx.Commit(c.Context()); err != nil {
+	if err = tx.Commit(ctx); err != nil {
 		return err
 	}
 
@@ -86,11 +87,11 @@ func (r *repository) Create(c *fiber.Ctx, grade gradesModels.Grade) error {
 	return err
 }
 
-func (r *repository) GetAllStudentGrades(c *fiber.Ctx, studentId string, isFinal bool, subjectId *string) ([]gradesModels.GradeInfoRepoModel, error) {
+func (r *repository) GetAllStudentGrades(ctx context.Context, studentId string, isFinal bool, subjectId *string) ([]gradesModels.GradeInfoRepoModel, error) {
 	query := `
 	SELECT g.id, s.name, evaluation, created_at, g.is_final, g.comment
-	FROM grades g 
-	JOIN subjects s on g.subject_id = s.id 
+	FROM grades g
+	JOIN subjects s on g.subject_id = s.id
 	WHERE student_id=$1 AND is_final=$2
 	`
 	args := []interface{}{
@@ -104,7 +105,7 @@ func (r *repository) GetAllStudentGrades(c *fiber.Ctx, studentId string, isFinal
 	query = fmt.Sprintf("%s ORDER BY created_at DESC", query)
 	log.Printf("Fetching all student's %s grades", studentId)
 
-	rows, err := r.db.Query(c.Context(), query, args...)
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		log.Printf("Error fetching all grades: %v", err)
 		return nil, err
@@ -139,11 +140,11 @@ func (r *repository) GetAllStudentGrades(c *fiber.Ctx, studentId string, isFinal
 	return grades, nil
 }
 
-func (r *repository) Delete(c *fiber.Ctx, gradeId string) error {
+func (r *repository) Delete(ctx context.Context, gradeId string) error {
 	query := "DELETE FROM grades WHERE id=$1"
 	log.Printf("Deleting grade %s", gradeId)
 
-	_, err := r.db.Exec(c.Context(), query, gradeId)
+	_, err := r.db.Exec(ctx, query, gradeId)
 	if err != nil {
 		log.Printf("Error deleting grade error: %v", err)
 		return err
@@ -153,10 +154,10 @@ func (r *repository) Delete(c *fiber.Ctx, gradeId string) error {
 	return nil
 }
 
-func (r *repository) Update(c *fiber.Ctx, grade gradesModels.Grade) error {
+func (r *repository) Update(ctx context.Context, grade gradesModels.Grade) error {
 	query := `
-		UPDATE grades 
-		SET evaluation=@evaluation, comment=@comment 
+		UPDATE grades
+		SET evaluation=@evaluation, comment=@comment
 		WHERE id=@grade_id
 	`
 
@@ -166,7 +167,7 @@ func (r *repository) Update(c *fiber.Ctx, grade gradesModels.Grade) error {
 		"comment":    *grade.Comment,
 	}
 
-	_, err := r.db.Exec(c.Context(), query, args)
+	_, err := r.db.Exec(ctx, query, args)
 	if err != nil {
 		log.Printf("Error updating grade with id %s, err: %v", grade.Id, err)
 	} else {
@@ -176,15 +177,15 @@ func (r *repository) Update(c *fiber.Ctx, grade gradesModels.Grade) error {
 	return err
 }
 
-func (r *repository) GetById(c *fiber.Ctx, gradeId string) (*gradesModels.GradeRepoModel, error) {
+func (r *repository) GetById(ctx context.Context, gradeId string) (*gradesModels.GradeRepoModel, error) {
 	query := `
-		SELECT id, subject_id, student_id, evaluation, created_at, comment 
-		FROM grades 
+		SELECT id, subject_id, student_id, evaluation, created_at, comment
+		FROM grades
 		WHERE id=$1
 	`
 	log.Printf("Fetching grade by id: %s", gradeId)
 
-	row := r.db.QueryRow(c.Context(), query, gradeId)
+	row := r.db.QueryRow(ctx, query, gradeId)
 
 	grade := &gradesModels.GradeRepoModel{}
 	err := row.Scan(
@@ -207,7 +208,7 @@ func (r *repository) GetById(c *fiber.Ctx, gradeId string) (*gradesModels.GradeR
 	return grade, nil
 }
 
-func (r *repository) GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId, groupId string, isFinal *bool) ([]gradesModels.UserSubjectGradesRepoModel, error) {
+func (r *repository) GetStudentsGradesBySubjectAndGroup(ctx context.Context, subjectId, groupId string, isFinal *bool) ([]gradesModels.UserSubjectGradesRepoModel, error) {
 	query := `
 	SELECT u.uuid, u.login, u.name, u.last_name, u.middle_name, g.id, g.evaluation, g.created_at, g.is_final, g.comment
 	FROM groups gr
@@ -226,7 +227,7 @@ func (r *repository) GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId,
 	}
 	query = fmt.Sprintf("%s WHERE gr.id = $2 ORDER BY uuid;", query)
 
-	rows, err := r.db.Query(c.Context(), query, args...)
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -285,7 +286,7 @@ func (r *repository) GetStudentsGradesBySubjectAndGroup(c *fiber.Ctx, subjectId,
 	return usersSubjectGrades, nil
 }
 
-func (r *repository) GetAllGradesInfo(c *fiber.Ctx) ([]gradesModels.GradesReportRecordRepoModel, error) {
+func (r *repository) GetAllGradesInfo(ctx context.Context) ([]gradesModels.GradesReportRecordRepoModel, error) {
 	query := `
 		SELECT u.last_name, u.name, u.middle_name, gr.number, s.name, g.evaluation, g.created_at, g.comment, g.is_final, t.last_name, t.name, t.middle_name
 		FROM grades g
@@ -298,7 +299,7 @@ func (r *repository) GetAllGradesInfo(c *fiber.Ctx) ([]gradesModels.GradesReport
 		ORDER BY u.last_name, u.name, u.middle_name, s.name, g.created_at
 	`
 
-	rows, err := r.db.Query(c.Context(), query)
+	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		log.Printf("Error fetching all grades: %v", err)
 		return nil, err

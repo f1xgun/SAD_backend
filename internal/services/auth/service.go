@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"log"
 	"sad/internal/config"
@@ -14,8 +15,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-
-	"github.com/gofiber/fiber/v2"
 )
 
 type service struct {
@@ -28,9 +27,9 @@ func NewService(userRepository repositories.UserRepository) *service {
 	}
 }
 
-func (s *service) Login(c *fiber.Ctx, user usersModels.UserCredentials) (string, error) {
+func (s *service) Login(ctx context.Context, user usersModels.UserCredentials) (string, error) {
 	log.Printf("Attempting login for user: %s", user.Login)
-	existedUser, err := s.userRepository.GetByLogin(c, user.Login)
+	existedUser, err := s.userRepository.GetByLogin(ctx, user.Login)
 
 	if err != nil {
 		log.Printf("Repo get user by login error: %s", err.Error())
@@ -58,7 +57,7 @@ func (s *service) Login(c *fiber.Ctx, user usersModels.UserCredentials) (string,
 	return token, nil
 }
 
-func (s *service) Register(c *fiber.Ctx, user authModels.UserRegistrationRequest) error {
+func (s *service) Register(ctx context.Context, user authModels.UserRegistrationRequest) error {
 	log.Printf("Attempting to register new user: %s", user.Login)
 
 	if user.Login == "" {
@@ -98,7 +97,7 @@ func (s *service) Register(c *fiber.Ctx, user authModels.UserRegistrationRequest
 		Role:       usersModels.Student,
 	}
 
-	if err := s.userRepository.Create(c, newUser); err != nil {
+	if err := s.userRepository.Create(ctx, newUser); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			switch pgErr.Code {

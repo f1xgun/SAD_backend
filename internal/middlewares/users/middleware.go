@@ -1,34 +1,51 @@
 package users
 
 import (
-	"log"
+	"encoding/json"
+	"log/slog"
 	"net/http"
 	usersModels "sad/internal/models/users"
 	"sad/internal/services"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
-func AllowedRoleMiddleware(usersService services.UserService, allowedRoles []usersModels.UserRole) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		log.Println("Check user has allowed role")
-		userId, ok := c.Locals("userID").(string)
-		if !ok {
-			log.Println("Failed to assert type for userID from Locals")
-			return c.Status(http.StatusBadRequest).JSON(&fiber.Map{"error": "failed to get user id"})
-		}
+func AllowedRoleMiddleware(usersService services.UserService, allowedRoles []usersModels.UserRole, logger *slog.Logger) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			const op = "middlewares.users.AllowedRoleMiddleware"
 
-		userHasAllowedRole, err := usersService.CheckIsUserRoleAllowed(c, allowedRoles, userId)
-		if err != nil {
-			log.Printf("Error check is user admin: %v", err)
-			return c.Status(http.StatusInternalServerError).JSON(&fiber.Map{"error": err.Error()})
-		}
+			log := logger.With(
+				slog.String("op", op),
+				slog.String("request_id", middleware.GetReqID(r.Context())),
+			)
 
-		if !userHasAllowedRole {
-			log.Printf("No permission: %v", err)
-			return c.Status(http.StatusForbidden).JSON(fiber.Map{"message": "no permission"})
-		}
+			log.Info("Checking if user has allowed role")
 
-		return c.Next()
+			userID, ok := r.Context().Value("user_id").(string)
+			if !ok {
+				log.Error("Failed to assert type for userID from context")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]string{"error": "failed to get user id"})
+				return
+			}
+
+			userHasAllowedRole, err := usersService.CheckIsUserRoleAllowed(r.Context(), allowedRoles, userID)
+			if err != nil {
+				log.Error("Error checking if user has allowed role", slog.String("error", err.Error()))
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+				return
+			}
+
+			if !userHasAllowedRole {
+				log.Warn("User does not have permission", slog.String("userID", userID))
+				w.WriteHeader(http.StatusForbidden)
+				json.NewEncoder(w).Encode(map[string]string{"message": "no permission"})
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
 	}
 }

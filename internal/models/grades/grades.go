@@ -1,4 +1,4 @@
-package gradesModels
+package grades
 
 import (
 	"database/sql"

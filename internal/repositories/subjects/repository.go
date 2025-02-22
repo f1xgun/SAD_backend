@@ -1,12 +1,13 @@
 package subjects
 
 import (
+	"context"
 	"errors"
-	"github.com/gofiber/fiber/v2"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	subjectsModels "sad/internal/models/subjects"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type repository struct {
@@ -19,7 +20,7 @@ func NewRepository(db *pgxpool.Pool) *repository {
 	}
 }
 
-func (r *repository) Create(c *fiber.Ctx, subject subjectsModels.Subject) (*subjectsModels.Subject, error) {
+func (r *repository) Create(ctx context.Context, subject subjectsModels.Subject) (*subjectsModels.Subject, error) {
 	query := "INSERT INTO subjects (name) VALUES (@name)"
 	log.Printf("Creating subject: %#v", subject)
 
@@ -27,7 +28,7 @@ func (r *repository) Create(c *fiber.Ctx, subject subjectsModels.Subject) (*subj
 		"name": subject.Name,
 	}
 
-	if _, err := r.db.Exec(c.Context(), query, args); err != nil {
+	if _, err := r.db.Exec(ctx, query, args); err != nil {
 		log.Printf("Error creating subject: %#v, error: %v", subject, err)
 	} else {
 		log.Printf("Subject created successfully: %#v", subject)
@@ -35,7 +36,7 @@ func (r *repository) Create(c *fiber.Ctx, subject subjectsModels.Subject) (*subj
 
 	selectQuery := "SELECT id FROM subjects WHERE name = @name"
 
-	row := r.db.QueryRow(c.Context(), selectQuery, args)
+	row := r.db.QueryRow(ctx, selectQuery, args)
 
 	err := row.Scan(&subject.Id)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -49,11 +50,11 @@ func (r *repository) Create(c *fiber.Ctx, subject subjectsModels.Subject) (*subj
 	return &subject, nil
 }
 
-func (r *repository) GetAll(c *fiber.Ctx) ([]subjectsModels.SubjectRepoModel, error) {
+func (r *repository) GetAll(ctx context.Context) ([]subjectsModels.SubjectRepoModel, error) {
 	query := "SELECT id, name FROM subjects"
 	log.Printf("Fetching all subjects")
 
-	rows, err := r.db.Query(c.Context(), query)
+	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		log.Printf("Error fetching all subjects: %v", err)
 		return nil, err
@@ -82,11 +83,11 @@ func (r *repository) GetAll(c *fiber.Ctx) ([]subjectsModels.SubjectRepoModel, er
 	return subjects, nil
 }
 
-func (r *repository) GetById(c *fiber.Ctx, subjectId string) (*subjectsModels.SubjectRepoModel, error) {
+func (r *repository) GetById(ctx context.Context, subjectId string) (*subjectsModels.SubjectRepoModel, error) {
 	query := "SELECT id, name FROM subjects WHERE id=$1"
 	log.Printf("Fetching subject by id: %s", subjectId)
 
-	row := r.db.QueryRow(c.Context(), query, subjectId)
+	row := r.db.QueryRow(ctx, query, subjectId)
 
 	subject := &subjectsModels.SubjectRepoModel{}
 	err := row.Scan(&subject.Id, &subject.Name)
@@ -102,9 +103,9 @@ func (r *repository) GetById(c *fiber.Ctx, subjectId string) (*subjectsModels.Su
 	return subject, nil
 }
 
-func (r *repository) AddSubjectToGroup(c *fiber.Ctx, subjectGroup subjectsModels.SubjectGroup) error {
+func (r *repository) AddSubjectToGroup(ctx context.Context, subjectGroup subjectsModels.SubjectGroup) error {
 	log.Printf("Adding subject %s to group %s", subjectGroup.SubjectId, subjectGroup.GroupId)
-	subjectTeacherId, err := r.GetSubjectTeacherId(c, subjectGroup.SubjectId, subjectGroup.TeacherId)
+	subjectTeacherId, err := r.GetSubjectTeacherId(ctx, subjectGroup.SubjectId, subjectGroup.TeacherId)
 	if err != nil {
 		log.Printf("Error adding subject to group: subject_id=%s, group_id=%s, error: %v",
 			subjectGroup.SubjectId, subjectGroup.GroupId, err)
@@ -122,7 +123,7 @@ func (r *repository) AddSubjectToGroup(c *fiber.Ctx, subjectGroup subjectsModels
 		"group_id":           subjectGroup.GroupId,
 	}
 
-	_, err = r.db.Exec(c.Context(), query, args)
+	_, err = r.db.Exec(ctx, query, args)
 	if err != nil {
 		log.Printf("Error adding subject to group: subject_id=%s, group_id=%s, teacher_id=%s, error: %v",
 			subjectGroup.SubjectId, subjectGroup.GroupId, subjectGroup.TeacherId, err)
@@ -134,7 +135,7 @@ func (r *repository) AddSubjectToGroup(c *fiber.Ctx, subjectGroup subjectsModels
 	return nil
 }
 
-func (r *repository) DeleteSubjectFromGroup(c *fiber.Ctx, subjectId, groupId string) error {
+func (r *repository) DeleteSubjectFromGroup(ctx context.Context, subjectId, groupId string) error {
 	query := "DELETE FROM groups_subjects WHERE subject_id=@subject_id AND group_id=@group_id"
 	args := pgx.NamedArgs{
 		"subject_id": subjectId,
@@ -142,7 +143,7 @@ func (r *repository) DeleteSubjectFromGroup(c *fiber.Ctx, subjectId, groupId str
 	}
 	log.Printf("Deleting subject %s from group %s", subjectId, groupId)
 
-	_, err := r.db.Exec(c.Context(), query, args)
+	_, err := r.db.Exec(ctx, query, args)
 	if err != nil {
 		log.Printf("Error deleting subject from group: subject_id=%s, group_id=%s, error: %v", subjectId, groupId, err)
 		return err
@@ -152,15 +153,15 @@ func (r *repository) DeleteSubjectFromGroup(c *fiber.Ctx, subjectId, groupId str
 	return nil
 }
 
-func (r *repository) DeleteSubject(c *fiber.Ctx, subjectId string) error {
-	tx, err := r.db.Begin(c.Context())
+func (r *repository) DeleteSubject(ctx context.Context, subjectId string) error {
+	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 
 	defer func() {
 		if err != nil {
-			if rbErr := tx.Rollback(c.Context()); rbErr != nil {
+			if rbErr := tx.Rollback(ctx); rbErr != nil {
 				log.Printf("Error rolling back transaction: %v", rbErr)
 			}
 		}
@@ -171,20 +172,20 @@ func (r *repository) DeleteSubject(c *fiber.Ctx, subjectId string) error {
 	}
 
 	query := "DELETE FROM subjects WHERE id=@subject_id"
-	if _, err = r.db.Exec(c.Context(), query, args); err != nil {
+	if _, err = r.db.Exec(ctx, query, args); err != nil {
 		log.Printf("Error deleting subject with id %s , err: %v", subjectId, err)
 		return err
 	}
 	log.Printf("Delete subject with id %s successfully", subjectId)
 
-	if err = tx.Commit(c.Context()); err != nil {
+	if err = tx.Commit(ctx); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (r *repository) UpdateSubject(c *fiber.Ctx, subject subjectsModels.Subject) error {
+func (r *repository) UpdateSubject(ctx context.Context, subject subjectsModels.Subject) error {
 	log.Printf("Update subject with new value: %#v", subject)
 
 	query := "UPDATE subjects SET name=@name WHERE id=@subjectId"
@@ -193,7 +194,7 @@ func (r *repository) UpdateSubject(c *fiber.Ctx, subject subjectsModels.Subject)
 		"name":      subject.Name,
 	}
 
-	if _, err := r.db.Exec(c.Context(), query, args); err != nil {
+	if _, err := r.db.Exec(ctx, query, args); err != nil {
 		log.Printf("Error updating subject with id %s, err: %v", subject.Id, err)
 		return err
 	}
@@ -203,7 +204,7 @@ func (r *repository) UpdateSubject(c *fiber.Ctx, subject subjectsModels.Subject)
 	return nil
 }
 
-func (r *repository) IsSubjectInGroup(c *fiber.Ctx, subjectId, groupId string) (bool, error) {
+func (r *repository) IsSubjectInGroup(ctx context.Context, subjectId, groupId string) (bool, error) {
 	log.Printf("Checking if subject with ID '%s' is in group with ID '%s'\n", subjectId, groupId)
 
 	query := "SELECT COUNT(*) FROM groups_subjects WHERE subject_id=@subject_id and group_id=@group_id"
@@ -213,7 +214,7 @@ func (r *repository) IsSubjectInGroup(c *fiber.Ctx, subjectId, groupId string) (
 	}
 
 	var count int
-	err := r.db.QueryRow(c.Context(), query, args).Scan(&count)
+	err := r.db.QueryRow(ctx, query, args).Scan(&count)
 	if err != nil {
 		log.Printf("Error checking if subject '%s' is in group '%s': %v\n", subjectId, groupId, err)
 		return false, err
@@ -228,7 +229,7 @@ func (r *repository) IsSubjectInGroup(c *fiber.Ctx, subjectId, groupId string) (
 	return count > 0, nil
 }
 
-func (r *repository) GetSubjectTeacherId(c *fiber.Ctx, subjectId, teacherId string) (string, error) {
+func (r *repository) GetSubjectTeacherId(ctx context.Context, subjectId, teacherId string) (string, error) {
 	query := "SELECT id FROM subjects_teachers WHERE subject_id=@subject_id AND teacher_id=@teacher_id"
 	log.Printf("Fetching subject by id: %s", subjectId)
 
@@ -237,7 +238,7 @@ func (r *repository) GetSubjectTeacherId(c *fiber.Ctx, subjectId, teacherId stri
 		"teacher_id": teacherId,
 	}
 
-	row := r.db.QueryRow(c.Context(), query, args)
+	row := r.db.QueryRow(ctx, query, args)
 
 	var subjectTeacherId string
 	err := row.Scan(&subjectTeacherId)
@@ -253,11 +254,11 @@ func (r *repository) GetSubjectTeacherId(c *fiber.Ctx, subjectId, teacherId stri
 	return subjectTeacherId, nil
 }
 
-func (r *repository) AddTeacherToSubject(c *fiber.Ctx, subjectId, teacherId string) error {
+func (r *repository) AddTeacherToSubject(ctx context.Context, subjectId, teacherId string) error {
 	log.Printf("Adding teacher %s to subject %s", teacherId, subjectId)
 
 	queryForInsert := `
-	INSERT INTO subjects_teachers (subject_id, teacher_id) 
+	INSERT INTO subjects_teachers (subject_id, teacher_id)
 	VALUES (@subjectId, @teacherId)
 	`
 	args := pgx.NamedArgs{
@@ -265,7 +266,7 @@ func (r *repository) AddTeacherToSubject(c *fiber.Ctx, subjectId, teacherId stri
 		"teacherId": teacherId,
 	}
 
-	if _, err := r.db.Exec(c.Context(), queryForInsert, args); err != nil {
+	if _, err := r.db.Exec(ctx, queryForInsert, args); err != nil {
 		log.Printf("Error adding teacher to subject: subject_id=%s, teacher_id=%s, error: %v",
 			subjectId, teacherId, err)
 		return err
@@ -276,14 +277,14 @@ func (r *repository) AddTeacherToSubject(c *fiber.Ctx, subjectId, teacherId stri
 	return nil
 }
 
-func (r *repository) GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjectsModels.SubjectRepoModel, error) {
+func (r *repository) GetByIdWithDetails(ctx context.Context, subjectId string) (*subjectsModels.SubjectRepoModel, error) {
 	query := `
 		SELECT s.id, s.name
 		FROM subjects s
 		WHERE s.id = $1;
 	`
 
-	row := r.db.QueryRow(c.Context(), query, subjectId)
+	row := r.db.QueryRow(ctx, query, subjectId)
 	var subject subjectsModels.SubjectRepoModel
 	err := row.Scan(
 		&subject.Id,
@@ -302,7 +303,7 @@ func (r *repository) GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjec
 	return &subject, nil
 }
 
-func (r *repository) GetSubjectsByTeacherId(c *fiber.Ctx, teacherId string) ([]subjectsModels.SubjectRepoModel, error) {
+func (r *repository) GetSubjectsByTeacherId(ctx context.Context, teacherId string) ([]subjectsModels.SubjectRepoModel, error) {
 	query := `
 		SELECT s.id, s.name
 		FROM subjects_teachers st
@@ -310,7 +311,7 @@ func (r *repository) GetSubjectsByTeacherId(c *fiber.Ctx, teacherId string) ([]s
 		WHERE st.teacher_id = $1;
 	`
 
-	rows, err := r.db.Query(c.Context(), query, teacherId)
+	rows, err := r.db.Query(ctx, query, teacherId)
 	if err != nil {
 		log.Printf("Error fetching subjects by teacher's id: %v", err)
 		return nil, err
@@ -339,18 +340,18 @@ func (r *repository) GetSubjectsByTeacherId(c *fiber.Ctx, teacherId string) ([]s
 	return subjects, nil
 }
 
-func (r *repository) GetNewSubjectsForTeacher(c *fiber.Ctx, teacherId string) ([]subjectsModels.SubjectRepoModel, error) {
+func (r *repository) GetNewSubjectsForTeacher(ctx context.Context, teacherId string) ([]subjectsModels.SubjectRepoModel, error) {
 	query := `
 		SELECT s.id, s.name
 		FROM subjects s
 		WHERE s.id NOT IN (
-			SELECT st.subject_id 
-			FROM subjects_teachers st 
+			SELECT st.subject_id
+			FROM subjects_teachers st
 			WHERE st.teacher_id = $1
 	   );
 	`
 
-	rows, err := r.db.Query(c.Context(), query, teacherId)
+	rows, err := r.db.Query(ctx, query, teacherId)
 	if err != nil {
 		log.Printf("Error fetching new subjects by teacher's id: %v", err)
 		return nil, err
@@ -379,15 +380,15 @@ func (r *repository) GetNewSubjectsForTeacher(c *fiber.Ctx, teacherId string) ([
 	return subjects, nil
 }
 
-func (r *repository) UpdateTeacherSubjects(c *fiber.Ctx, teacherId string, subjects []subjectsModels.Subject) error {
-	tx, err := r.db.Begin(c.Context())
+func (r *repository) UpdateTeacherSubjects(ctx context.Context, teacherId string, subjects []subjectsModels.Subject) error {
+	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 
 	defer func() {
 		if err != nil {
-			if rbErr := tx.Rollback(c.Context()); rbErr != nil {
+			if rbErr := tx.Rollback(ctx); rbErr != nil {
 				log.Printf("Error rolling back transaction: %v", rbErr)
 			}
 		}
@@ -417,17 +418,17 @@ func (r *repository) UpdateTeacherSubjects(c *fiber.Ctx, teacherId string, subje
 		);
 	`
 
-	_, err = tx.Exec(c.Context(), deleteQuery, teacherId, subjectIds)
+	_, err = tx.Exec(ctx, deleteQuery, teacherId, subjectIds)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec(c.Context(), insertQuery, teacherId, subjectIds)
+	_, err = tx.Exec(ctx, insertQuery, teacherId, subjectIds)
 	if err != nil {
 		return err
 	}
 
-	err = tx.Commit(c.Context())
+	err = tx.Commit(ctx)
 	if err != nil {
 		return err
 	}

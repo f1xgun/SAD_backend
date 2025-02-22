@@ -2,247 +2,448 @@ package groups
 
 import (
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
-	"sad/internal/services"
-
-	"github.com/gofiber/fiber/v2"
-
 	errorsModels "sad/internal/models/errors"
 	groupsModels "sad/internal/models/groups"
+	"sad/internal/services"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/render"
 )
 
 type Handler interface {
-	Create(c *fiber.Ctx) error
-	GetAll(c *fiber.Ctx) error
-	Get(c *fiber.Ctx) error
-	GetWithDetails(c *fiber.Ctx) error
-	Delete(c *fiber.Ctx) error
-	AddUserToGroup(c *fiber.Ctx) error
-	DeleteUserFromGroup(c *fiber.Ctx) error
-	Update(c *fiber.Ctx) error
-	GetAvailableNewUsers(c *fiber.Ctx) error
-	GetGroupsWithSubjectsByTeacher(c *fiber.Ctx) error
-	GetTeacherGroupsBySubject(c *fiber.Ctx) error
+	Create(w http.ResponseWriter, r *http.Request)
+	GetAll(w http.ResponseWriter, r *http.Request)
+	Get(w http.ResponseWriter, r *http.Request)
+	GetWithDetails(w http.ResponseWriter, r *http.Request)
+	Delete(w http.ResponseWriter, r *http.Request)
+	AddUserToGroup(w http.ResponseWriter, r *http.Request)
+	DeleteUserFromGroup(w http.ResponseWriter, r *http.Request)
+	Update(w http.ResponseWriter, r *http.Request)
+	GetAvailableNewUsers(w http.ResponseWriter, r *http.Request)
+	GetGroupsWithSubjectsByTeacher(w http.ResponseWriter, r *http.Request)
+	GetTeacherGroupsBySubject(w http.ResponseWriter, r *http.Request)
 }
 
 type groupsHandler struct {
 	groupsService services.GroupsService
+	log           *slog.Logger
 }
 
-func NewGroupsHandler(groupsService services.GroupsService) Handler {
+func NewGroupsHandler(logger *slog.Logger, groupsService services.GroupsService) Handler {
 	return &groupsHandler{
 		groupsService: groupsService,
+		log:           logger,
 	}
 }
 
-func (h *groupsHandler) Create(c *fiber.Ctx) error {
+func (h *groupsHandler) Create(w http.ResponseWriter, r *http.Request) {
+	const op = "handlers.groups.Create"
+
+	log := h.log.With(
+		slog.String("op", op),
+		slog.String("request_id", middleware.GetReqID(r.Context())),
+	)
+
 	var body groupsModels.Group
-	if err := c.BodyParser(&body); err != nil {
-		return c.Status(http.StatusBadRequest).JSON(&fiber.Map{"error": "invalid request body"})
+	if err := render.DecodeJSON(r.Body, &body); err != nil {
+		log.Error("Failed to decode request body", slog.String("error", err.Error()))
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": "invalid request body"})
+		return
 	}
 
-	number := body.Number
-	err := h.groupsService.Create(c, number)
+	log.Info("Attempting to create group", slog.String("group_number", body.Number))
+
+	err := h.groupsService.Create(r.Context(), body.Number)
 	if err != nil {
 		var status int
 		var errMsg string
+
 		switch {
 		case errors.Is(err, errorsModels.ErrGroupExists):
 			status = http.StatusConflict
-			errMsg = "Group with this number already exist"
+			errMsg = "Group with this number already exists"
+			log.Warn("Group already exists", slog.String("group_number", body.Number))
 		case errors.Is(err, errorsModels.ErrServer):
 			status = http.StatusInternalServerError
 			errMsg = "Server error"
+			log.Error("Server error", slog.String("error", err.Error()))
 		default:
-			status = http.StatusBadRequest
+			status = http.StatusInternalServerError
 			errMsg = err.Error()
+			log.Error("Failed to create group", slog.String("error", err.Error()))
 		}
-		log.Printf("Failed to create group: %v", errMsg)
-		return c.Status(status).JSON(fiber.Map{"error": errMsg})
+
+		render.Status(r, status)
+		render.JSON(w, r, map[string]string{"error": errMsg})
+		return
 	}
-	return c.Status(http.StatusOK).JSON(fiber.Map{"message": "Group created successfully"})
+
+	log.Info("Group created successfully", slog.String("group_number", body.Number))
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, map[string]string{"message": "Group created successfully"})
 }
 
-func (h *groupsHandler) Get(c *fiber.Ctx) error {
-	groupId := c.Params("group_id")
-	group, err := h.groupsService.GetById(c, groupId)
+func (h *groupsHandler) Get(w http.ResponseWriter, r *http.Request) {
+	const op = "handlers.groups.Get"
+
+	log := h.log.With(
+		slog.String("op", op),
+		slog.String("request_id", middleware.GetReqID(r.Context())),
+	)
+
+	groupId := chi.URLParam(r, "group_id")
+	if groupId == "" {
+		log.Error("group_id is required")
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": "group_id is required"})
+		return
+	}
+
+	log.Info("Fetching group by ID", slog.String("group_id", groupId))
+
+	group, err := h.groupsService.GetById(r.Context(), groupId)
 	if err != nil {
-		log.Printf("Failed to retrieve group: %v", err)
 		var status int
+
 		switch {
 		case errors.Is(err, errorsModels.ErrGroupDoesNotExist):
 			status = http.StatusNotFound
+			log.Warn("Group not found", slog.String("group_id", groupId))
 		default:
 			status = http.StatusInternalServerError
+			log.Error("Failed to retrieve group", slog.String("error", err.Error()))
 		}
-		return c.Status(status).JSON(fiber.Map{"error": err.Error()})
+
+		render.Status(r, status)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
 	}
-	return c.JSON(group)
+
+	log.Info("Group retrieved successfully", slog.String("group_id", groupId))
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, group)
 }
 
-func (h *groupsHandler) GetAll(c *fiber.Ctx) error {
-	groups, err := h.groupsService.GetAll(c)
+func (h *groupsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
+	const op = "handlers.groups.GetAll"
+
+	log := h.log.With(
+		slog.String("op", op),
+		slog.String("request_id", middleware.GetReqID(r.Context())),
+	)
+
+	log.Info("Fetching all groups")
+
+	groups, err := h.groupsService.GetAll(r.Context())
 	if err != nil {
-		log.Printf("Failed to retrieve groups: %v", err)
-		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		log.Error("Failed to retrieve groups", slog.String("error", err.Error()))
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
 	}
-	return c.Status(http.StatusOK).JSON(groups)
+
+	log.Info("Successfully fetched all groups")
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, groups)
 }
 
-func (h *groupsHandler) AddUserToGroup(c *fiber.Ctx) error {
+func (h *groupsHandler) AddUserToGroup(w http.ResponseWriter, r *http.Request) {
+	const op = "handlers.groups.AddUserToGroup"
+
+	log := h.log.With(
+		slog.String("op", op),
+		slog.String("request_id", middleware.GetReqID(r.Context())),
+	)
+
 	var body groupsModels.UserGroup
-	if err := c.BodyParser(&body); err != nil {
-		return c.Status(http.StatusBadRequest).JSON(&fiber.Map{"error": "invalid request body"})
+	if err := render.DecodeJSON(r.Body, &body); err != nil {
+		log.Error("Failed to decode request body", slog.String("error", err.Error()))
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": "invalid request body"})
+		return
 	}
-	groupId := c.Params("group_id")
+
+	groupId := chi.URLParam(r, "group_id")
 	userId := body.UserId
 
-	err := h.groupsService.AddUserToGroup(c, groupId, userId)
+	log.Info("Attempting to add user to group", slog.String("group_id", groupId), slog.String("user_id", userId))
 
+	err := h.groupsService.AddUserToGroup(r.Context(), groupId, userId)
 	if err != nil {
-		log.Printf("Failed to add user to group: %v", err)
 		var status int
 		switch {
 		case errors.Is(err, errorsModels.ErrUserExists):
 			status = http.StatusConflict
+			log.Warn("User already exists in group", slog.String("user_id", userId), slog.String("group_id", groupId))
 		case errors.Is(err, errorsModels.ErrGroupDoesNotExist):
 			status = http.StatusNotFound
+			log.Warn("Group not found", slog.String("group_id", groupId))
 		default:
 			status = http.StatusInternalServerError
+			log.Error("Failed to add user to group", slog.String("error", err.Error()))
 		}
-		return c.Status(status).JSON(fiber.Map{"error": err.Error()})
+		render.Status(r, status)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
 	}
-	return c.Status(http.StatusOK).JSON(fiber.Map{"message": "User added to group successfully"})
+
+	log.Info("User added to group successfully", slog.String("user_id", userId), slog.String("group_id", groupId))
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, map[string]string{"message": "User added to group successfully"})
 }
 
-func (h *groupsHandler) DeleteUserFromGroup(c *fiber.Ctx) error {
-	groupId := c.Params("group_id")
-	userId := c.Params("user_id")
+func (h *groupsHandler) DeleteUserFromGroup(w http.ResponseWriter, r *http.Request) {
+	const op = "handlers.groups.DeleteUserFromGroup"
 
-	err := h.groupsService.DeleteUserFromGroup(c, groupId, userId)
+	log := h.log.With(
+		slog.String("op", op),
+		slog.String("request_id", middleware.GetReqID(r.Context())),
+	)
 
+	groupId := chi.URLParam(r, "group_id")
+	userId := chi.URLParam(r, "user_id")
+
+	log.Info("Attempting to delete user from group", slog.String("group_id", groupId), slog.String("user_id", userId))
+
+	err := h.groupsService.DeleteUserFromGroup(r.Context(), groupId, userId)
 	if err != nil {
-		log.Printf("Failed to delete user from group: %v", err)
 		var status int
 		switch {
 		case errors.Is(err, errorsModels.ErrGroupDoesNotExist):
 			status = http.StatusNotFound
+			log.Warn("Group not found", slog.String("group_id", groupId))
 		case errors.Is(err, errorsModels.ErrUserNotInGroup):
 			status = http.StatusNotFound
+			log.Warn("User not in group", slog.String("user_id", userId), slog.String("group_id", groupId))
 		default:
 			status = http.StatusInternalServerError
+			log.Error("Failed to delete user from group", slog.String("error", err.Error()))
 		}
-		return c.Status(status).JSON(fiber.Map{"error": err.Error()})
+		render.Status(r, status)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
 	}
-	return c.Status(http.StatusOK).JSON(fiber.Map{"message": "User removed from group successfully"})
+
+	log.Info("User removed from group successfully", slog.String("user_id", userId), slog.String("group_id", groupId))
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, map[string]string{"message": "User removed from group successfully"})
 }
 
-func (h *groupsHandler) Delete(c *fiber.Ctx) error {
-	groupId := c.Params("group_id")
-	err := h.groupsService.DeleteGroup(c, groupId)
+func (h *groupsHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	const op = "handlers.groups.Delete"
+
+	log := h.log.With(
+		slog.String("op", op),
+		slog.String("request_id", middleware.GetReqID(r.Context())),
+	)
+
+	groupId := chi.URLParam(r, "group_id")
+
+	log.Info("Attempting to delete group", slog.String("group_id", groupId))
+
+	err := h.groupsService.DeleteGroup(r.Context(), groupId)
 	if err != nil {
-		log.Printf("Failed to delete group: %v", err)
 		var status int
 		switch {
 		case errors.Is(err, errorsModels.ErrGroupDoesNotExist):
 			status = http.StatusNotFound
+			log.Warn("Group not found", slog.String("group_id", groupId))
 		default:
 			status = http.StatusInternalServerError
+			log.Error("Failed to delete group", slog.String("error", err.Error()))
 		}
-		return c.Status(status).JSON(fiber.Map{"error": err.Error()})
+		render.Status(r, status)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
 	}
-	return c.SendStatus(http.StatusOK)
+
+	log.Info("Group deleted successfully", slog.String("group_id", groupId))
+	w.WriteHeader(http.StatusOK)
 }
 
-func (h *groupsHandler) Update(c *fiber.Ctx) error {
-	groupId := c.Params("group_id")
+func (h *groupsHandler) Update(w http.ResponseWriter, r *http.Request) {
+	const op = "handlers.groups.Update"
+
+	log := h.log.With(
+		slog.String("op", op),
+		slog.String("request_id", middleware.GetReqID(r.Context())),
+	)
+
+	groupId := chi.URLParam(r, "group_id")
 	var group groupsModels.Group
-	if err := c.BodyParser(&group); err != nil {
-		return c.Status(http.StatusBadRequest).JSON(&fiber.Map{"error": "invalid request body"})
+
+	if err := render.DecodeJSON(r.Body, &group); err != nil {
+		log.Error("Failed to decode request body", slog.String("error", err.Error()))
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": "invalid request body"})
+		return
 	}
 
-	err := h.groupsService.UpdateGroup(c, groupId, group)
+	log.Info("Attempting to update group", slog.String("group_id", groupId))
+
+	err := h.groupsService.UpdateGroup(r.Context(), groupId, group)
 	if err != nil {
 		var status int
 		var errMsg string
 		switch {
 		case errors.Is(err, errorsModels.ErrGroupExists):
 			status = http.StatusConflict
-			errMsg = "Group with this number already exist"
+			errMsg = "Group with this number already exists"
+			log.Warn("Group already exists", slog.String("group_id", groupId))
 		case errors.Is(err, errorsModels.ErrServer):
 			status = http.StatusInternalServerError
 			errMsg = "Server error"
+			log.Error("Server error", slog.String("error", err.Error()))
 		default:
 			status = http.StatusInternalServerError
 			errMsg = err.Error()
+			log.Error("Failed to update group", slog.String("error", err.Error()))
 		}
-		log.Printf("Failed to update group: %v", errMsg)
-		return c.Status(status).JSON(fiber.Map{"error": errMsg})
+		render.Status(r, status)
+		render.JSON(w, r, map[string]string{"error": errMsg})
+		return
 	}
-	return c.Status(http.StatusOK).JSON(fiber.Map{"message": "Group update successfully"})
+
+	log.Info("Group updated successfully", slog.String("group_id", groupId))
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, map[string]string{"message": "Group updated successfully"})
 }
 
-func (h *groupsHandler) GetWithDetails(c *fiber.Ctx) error {
-	groupId := c.Params("group_id")
-	group, err := h.groupsService.GetWithDetailsById(c, groupId)
+func (h *groupsHandler) GetWithDetails(w http.ResponseWriter, r *http.Request) {
+	const op = "handlers.groups.GetWithDetails"
+
+	log := h.log.With(
+		slog.String("op", op),
+		slog.String("request_id", middleware.GetReqID(r.Context())),
+	)
+
+	groupId := chi.URLParam(r, "group_id")
+
+	log.Info("Fetching group with details", slog.String("group_id", groupId))
+
+	group, err := h.groupsService.GetWithDetailsById(r.Context(), groupId)
 	if err != nil {
-		log.Printf("Failed to retrieve group: %v", err)
 		var status int
 		switch {
 		case errors.Is(err, errorsModels.ErrGroupDoesNotExist):
 			status = http.StatusNotFound
+			log.Warn("Group not found", slog.String("group_id", groupId))
 		default:
 			status = http.StatusInternalServerError
+			log.Error("Failed to retrieve group", slog.String("error", err.Error()))
 		}
-		return c.Status(status).JSON(fiber.Map{"error": err.Error()})
+		render.Status(r, status)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
 	}
-	return c.Status(http.StatusOK).JSON(group)
+
+	log.Info("Group with details retrieved successfully", slog.String("group_id", groupId))
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, group)
 }
 
-func (h *groupsHandler) GetAvailableNewUsers(c *fiber.Ctx) error {
-	groupId := c.Params("group_id")
-	login := c.Query("login")
+func (h *groupsHandler) GetAvailableNewUsers(w http.ResponseWriter, r *http.Request) {
+	const op = "handlers.groups.GetAvailableNewUsers"
 
-	users, err := h.groupsService.GetAvailableNewUsers(c, groupId, login)
+	log := h.log.With(
+		slog.String("op", op),
+		slog.String("request_id", middleware.GetReqID(r.Context())),
+	)
+
+	groupId := chi.URLParam(r, "group_id")
+	login := r.URL.Query().Get("login")
+
+	log.Info("Fetching available new users for group", slog.String("group_id", groupId), slog.String("login", login))
+
+	users, err := h.groupsService.GetAvailableNewUsers(r.Context(), groupId, login)
 	if err != nil {
-		log.Printf("Failed to retrieve available new users: %v", err)
 		var status int
 		switch {
 		case errors.Is(err, errorsModels.ErrGroupDoesNotExist):
 			status = http.StatusNotFound
+			log.Warn("Group not found", slog.String("group_id", groupId))
 		default:
 			status = http.StatusInternalServerError
+			log.Error("Failed to retrieve available new users", slog.String("error", err.Error()))
 		}
-		return c.Status(status).JSON(fiber.Map{"error": err.Error()})
+		render.Status(r, status)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
 	}
 
-	return c.Status(http.StatusOK).JSON(users)
+	log.Info("Available new users retrieved successfully", slog.String("group_id", groupId))
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, users)
 }
 
-func (h *groupsHandler) GetGroupsWithSubjectsByTeacher(c *fiber.Ctx) error {
-	teacherId := c.Query("teacher_id")
+func (h *groupsHandler) GetGroupsWithSubjectsByTeacher(w http.ResponseWriter, r *http.Request) {
+	const op = "handlers.groups.GetGroupsWithSubjectsByTeacher"
 
-	groupsWithSujects, err := h.groupsService.GetGroupsWithSubjectsByTeacher(c, teacherId)
+	log := h.log.With(
+		slog.String("op", op),
+		slog.String("request_id", middleware.GetReqID(r.Context())),
+	)
+
+	teacherId := r.URL.Query().Get("teacher_id")
+
+	log.Info("Fetching groups with subjects by teacher", slog.String("teacher_id", teacherId))
+
+	groupsWithSubjects, err := h.groupsService.GetGroupsWithSubjectsByTeacher(r.Context(), teacherId)
 	if err != nil {
-		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		log.Error("Failed to retrieve groups with subjects", slog.String("error", err.Error()))
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
 	}
 
-	return c.Status(http.StatusOK).JSON(groupsWithSujects)
+	log.Info("Groups with subjects retrieved successfully", slog.String("teacher_id", teacherId))
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, groupsWithSubjects)
 }
 
-func (h *groupsHandler) GetTeacherGroupsBySubject(c *fiber.Ctx) error {
-	userID, ok := c.Locals("userID").(string)
+func (h *groupsHandler) GetTeacherGroupsBySubject(w http.ResponseWriter, r *http.Request) {
+	const op = "handlers.groups.GetTeacherGroupsBySubject"
+
+	log := h.log.With(
+		slog.String("op", op),
+		slog.String("request_id", middleware.GetReqID(r.Context())),
+	)
+
+	userID, ok := r.Context().Value("user_id").(string)
 	if !ok {
-		log.Println("Failed to assert type for userID from Locals")
-		return errorsModels.ErrServer
+		log.Error("Failed to assert type for userID from context")
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]string{"error": errorsModels.ErrServer.Error()})
+		return
 	}
 
-	subjectId := c.Query("subject_id")
-	groups, err := h.groupsService.GetGroupsBySubjectAndTeacher(c, userID, subjectId)
+	subjectId := r.URL.Query().Get("subject_id")
+
+	log.Info("Fetching teacher groups by subject",
+		slog.String("teacher_id", userID),
+		slog.String("subject_id", subjectId),
+	)
+
+	groups, err := h.groupsService.GetGroupsBySubjectAndTeacher(r.Context(), userID, subjectId)
 	if err != nil {
-		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		log.Error("Failed to retrieve teacher groups by subject", slog.String("error", err.Error()))
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
 	}
 
-	return c.Status(http.StatusOK).JSON(groups)
+	log.Info("Teacher groups by subject retrieved successfully",
+		slog.String("teacher_id", userID),
+		slog.String("subject_id", subjectId),
+	)
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, groups)
 }

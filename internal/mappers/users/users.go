@@ -4,16 +4,16 @@ import (
 	"sad/internal/models/users"
 )
 
-func UserInfoFromRepoToService(repoModel usersModels.UserInfoRepoModel) usersModels.UserInfo {
-	var role usersModels.UserRole
+func UserInfoFromRepoToService(repoModel users.UserInfoRepoModel) users.UserInfo {
+	var role users.UserRole
 
 	switch repoModel.Role.String {
 	case "student":
-		role = usersModels.Student
+		role = users.Student
 	case "teacher":
-		role = usersModels.Teacher
+		role = users.Teacher
 	case "admin":
-		role = usersModels.Admin
+		role = users.Admin
 	default:
 		role = ""
 	}
@@ -23,7 +23,7 @@ func UserInfoFromRepoToService(repoModel usersModels.UserInfoRepoModel) usersMod
 		middleName = repoModel.MiddleName.String
 	}
 
-	return usersModels.UserInfo{
+	return users.UserInfo{
 		Id:         repoModel.Id.String,
 		Name:       repoModel.Name.String,
 		Login:      repoModel.Login.String,
@@ -33,8 +33,8 @@ func UserInfoFromRepoToService(repoModel usersModels.UserInfoRepoModel) usersMod
 	}
 }
 
-func UsersInfoFromRepoToService(repoModel []usersModels.UserInfoRepoModel) []usersModels.UserInfo {
-	users := make([]usersModels.UserInfo, 0)
+func UsersInfoFromRepoToService(repoModel []users.UserInfoRepoModel) []users.UserInfo {
+	users := make([]users.UserInfo, 0)
 	for _, userRepo := range repoModel {
 		user := UserInfoFromRepoToService(userRepo)
 		users = append(users, user)

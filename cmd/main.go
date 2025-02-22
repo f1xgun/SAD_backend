@@ -12,7 +12,7 @@ func main() {
 		log.Fatalf("Failed to init app: %s", err.Error())
 	}
 
-	if err := application.Run(); err != nil {
+	if err := application.RunServer(); err != nil {
 		log.Fatalf("Failed to run app: %s", err.Error())
 	}
 

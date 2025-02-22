@@ -2,70 +2,117 @@ package users
 
 import (
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
-	"sad/internal/models/errors"
+	errorsModels "sad/internal/models/errors"
 	"sad/internal/models/users"
 	"sad/internal/services"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/render"
 )
 
 type UserHandler interface {
-	EditUser(c *fiber.Ctx) error
-	GetUserInfo(c *fiber.Ctx) error
-	GetUsers(c *fiber.Ctx) error
-	DeleteUser(c *fiber.Ctx) error
-	GetUserInfoByToken(c *fiber.Ctx) error
+	EditUser(w http.ResponseWriter, r *http.Request)
+	GetUserInfo(w http.ResponseWriter, r *http.Request)
+	GetUsers(w http.ResponseWriter, r *http.Request)
+	DeleteUser(w http.ResponseWriter, r *http.Request)
+	GetUserInfoByToken(w http.ResponseWriter, r *http.Request)
 }
 
 type userHandler struct {
 	userService services.UserService
+	log         *slog.Logger
 }
 
-func NewUserHandler(userService services.UserService) UserHandler {
+func NewUserHandler(logger *slog.Logger, userService services.UserService) UserHandler {
 	return &userHandler{
 		userService: userService,
+		log:         logger,
 	}
 }
 
-func (h *userHandler) EditUser(c *fiber.Ctx) error {
-	userID := c.Params("user_id")
+func (h *userHandler) EditUser(w http.ResponseWriter, r *http.Request) {
+	const op = "handlers.user.EditUser"
 
-	var user usersModels.UserInfo
-	if err := c.BodyParser(&user); err != nil {
-		return c.Status(http.StatusBadRequest).JSON(&fiber.Map{"error": "invalid request body"})
+	log := h.log.With(
+		slog.String("op", op),
+		slog.String("request_id", middleware.GetReqID(r.Context())),
+	)
+
+	userID, ok := r.Context().Value("user_id").(string)
+	if !ok || userID == "" {
+		log.Error("failed to get userID from context")
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]string{"error": "internal server error"})
+		return
 	}
 
-	err := h.userService.EditUser(c, userID, user.Role, user.Name)
+	var user users.UserInfo
+	if err := render.DecodeJSON(r.Body, &user); err != nil {
+		log.Error("failed to decode request body", slog.String("error", err.Error()))
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": "invalid request body"})
+		return
+	}
+
+	log.Info("attempting to edit user info", slog.String("user_id", userID))
+
+	err := h.userService.EditUser(r.Context(), userID, user.Role, user.Name)
 	if err != nil {
 		var statusCode int
 		var errMsg string
+
 		switch {
 		case errors.Is(err, errorsModels.ErrNoPermission):
 			statusCode = http.StatusForbidden
 			errMsg = "No permission to change user info"
+			log.Warn("no permission to change user info", slog.String("user_id", userID))
 		case errors.Is(err, errorsModels.ErrUserNotFound):
 			statusCode = http.StatusNotFound
 			errMsg = "User with this id does not exist"
+			log.Warn("user not found", slog.String("user_id", userID))
 		case errors.Is(err, errorsModels.ErrChangeOwnRole):
 			statusCode = http.StatusForbidden
 			errMsg = "Cannot change own info"
+			log.Warn("attempt to change own info", slog.String("user_id", userID))
 		default:
 			statusCode = http.StatusInternalServerError
 			errMsg = err.Error()
+			log.Error("failed to edit user info", slog.String("error", err.Error()))
 		}
-		log.Printf("Error occurred while changing user info: %s, Status Code: %d", errMsg, statusCode)
-		return c.Status(statusCode).JSON(&fiber.Map{"error": errMsg})
+
+		render.Status(r, statusCode)
+		render.JSON(w, r, map[string]string{"error": errMsg})
+		return
 	}
 
-	return c.SendStatus(http.StatusOK)
+	log.Info("user info edited successfully", slog.String("user_id", userID))
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, map[string]string{"message": "user info updated successfully"})
 }
 
-func (h *userHandler) GetUserInfo(c *fiber.Ctx) error {
-	userID := c.Params("user_id")
+func (h *userHandler) GetUserInfo(w http.ResponseWriter, r *http.Request) {
+	const op = "handlers.user.GetUserInfo"
 
-	userInfo, err := h.userService.GetUserInfo(c, userID)
+	log := h.log.With(
+		slog.String("op", op),
+		slog.String("request_id", middleware.GetReqID(r.Context())),
+	)
+
+	userID := chi.URLParam(r, "user_id")
+	if userID == "" {
+		log.Error("user_id is required")
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": "user_id is required"})
+		return
+	}
+
+	log.Info("fetching user info", slog.String("user_id", userID))
+
+	userInfo, err := h.userService.GetUserInfo(r.Context(), userID)
 	if err != nil {
 		var statusCode int
 		var errMsg string
@@ -73,62 +120,132 @@ func (h *userHandler) GetUserInfo(c *fiber.Ctx) error {
 		case errors.Is(err, errorsModels.ErrUserNotFound):
 			statusCode = http.StatusNotFound
 			errMsg = "User with this id does not exist"
+			log.Warn("user not found", slog.String("user_id", userID))
 		default:
 			statusCode = http.StatusInternalServerError
 			errMsg = err.Error()
+			log.Error("failed to fetch user info", slog.String("error", err.Error()))
 		}
-		log.Printf("Error occurred while fetching user info: %s", errMsg)
-		return c.Status(statusCode).JSON(&fiber.Map{"error": errMsg})
+		render.Status(r, statusCode)
+		render.JSON(w, r, map[string]string{"error": errMsg})
+		return
 	}
 
-	return c.Status(http.StatusOK).JSON(userInfo)
+	log.Info("user info fetched successfully", slog.String("user_id", userID))
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, userInfo)
 }
 
-func (h *userHandler) GetUsers(c *fiber.Ctx) error {
-	usersInfo, err := h.userService.GetUsersInfo(c)
+func (h *userHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
+	const op = "handlers.user.GetUsers"
+
+	log := h.log.With(
+		slog.String("op", op),
+		slog.String("request_id", middleware.GetReqID(r.Context())),
+	)
+
+	usersInfo, err := h.userService.GetUsersInfo(r.Context())
 	if err != nil {
-		log.Printf("Error occurred while fetching users info: %s", err.Error())
-		return c.Status(http.StatusInternalServerError).JSON(&fiber.Map{"error": err.Error()})
+		log.Error("failed to fetching users info", slog.String("error", err.Error()))
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
 	}
 
-	return c.Status(http.StatusOK).JSON(usersInfo)
+	log.Info("users info fetched successfully")
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, usersInfo)
 }
 
-func (h *userHandler) DeleteUser(c *fiber.Ctx) error {
-	userID := c.Params("user_id")
+func (h *userHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
+	const op = "handlers.user.DeleteUser"
 
-	err := h.userService.DeleteUser(c, userID)
+	log := h.log.With(
+		slog.String("op", op),
+		slog.String("request_id", middleware.GetReqID(r.Context())),
+	)
 
-	if err != nil {
-		log.Printf("Error occured while deleting user with id: %s, err: %s", userID, err.Error())
-		return c.Status(http.StatusInternalServerError).JSON(&fiber.Map{"error": err.Error()})
+	userID := chi.URLParam(r, "user_id")
+
+	if userID == "" {
+		log.Error("user_id is required")
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": "user_id is required"})
+		return
 	}
 
-	return c.SendStatus(http.StatusOK)
-}
+	log.Info("attempting to delete user", slog.String("user_id", userID))
 
-func (h *userHandler) GetUserInfoByToken(c *fiber.Ctx) error {
-	userID, ok := c.Locals("userID").(string)
-	if !ok {
-		log.Println("Failed to assert type for userID from Locals")
-		return errorsModels.ErrServer
-	}
-
-	userInfo, err := h.userService.GetUserInfo(c, userID)
+	err := h.userService.DeleteUser(r.Context(), userID)
 	if err != nil {
 		var statusCode int
 		var errMsg string
+
 		switch {
 		case errors.Is(err, errorsModels.ErrUserNotFound):
 			statusCode = http.StatusNotFound
 			errMsg = "User with this id does not exist"
+			log.Warn("user not found", slog.String("user_id", userID))
 		default:
 			statusCode = http.StatusInternalServerError
 			errMsg = err.Error()
+			log.Error("failed to delete user", slog.String("user_id", userID), slog.String("error", err.Error()))
 		}
-		log.Printf("Error occurred while fetching user info: %s", errMsg)
-		return c.Status(statusCode).JSON(&fiber.Map{"error": errMsg})
+
+		render.Status(r, statusCode)
+		render.JSON(w, r, map[string]string{"error": errMsg})
+		return
 	}
 
-	return c.Status(http.StatusOK).JSON(userInfo)
+	log.Info("user deleted successfully", slog.String("user_id", userID))
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, map[string]string{"message": "user deleted successfully"})
+}
+
+func (h *userHandler) GetUserInfoByToken(w http.ResponseWriter, r *http.Request) {
+	const op = "handlers.user.GetUserInfoByToken"
+
+	log := h.log.With(
+		slog.String("op", op),
+		slog.String("request_id", middleware.GetReqID(r.Context())),
+	)
+
+	userID, ok := r.Context().Value("user_id").(string)
+	if !ok || userID == "" {
+		log.Error("failed to get userID from context")
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]string{"error": "internal server error"})
+		return
+	}
+
+	log.Info("fetching user info by token", slog.String("user_id", userID))
+
+	userInfo, err := h.userService.GetUserInfo(r.Context(), userID)
+	if err != nil {
+		var statusCode int
+		var errMsg string
+
+		switch {
+		case errors.Is(err, errorsModels.ErrUserNotFound):
+			statusCode = http.StatusNotFound
+			errMsg = "User with this id does not exist"
+			log.Warn("user not found", slog.String("user_id", userID))
+		default:
+			statusCode = http.StatusInternalServerError
+			errMsg = err.Error()
+			log.Error("failed to fetch user info", slog.String("error", err.Error()))
+		}
+
+		render.Status(r, statusCode)
+		render.JSON(w, r, map[string]string{"error": errMsg})
+		return
+	}
+
+	log.Info("user info fetched successfully", slog.String("user_id", userID))
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, userInfo)
 }

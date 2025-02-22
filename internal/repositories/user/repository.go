@@ -1,13 +1,14 @@
 package users
 
 import (
+	"context"
 	"errors"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	usersModels "sad/internal/models/users"
 	def "sad/internal/repositories"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/jackc/pgx/v5"
 )
 
@@ -23,11 +24,11 @@ func NewRepository(db *pgxpool.Pool) *repository {
 	}
 }
 
-func (r *repository) GetById(c *fiber.Ctx, userId string) (*usersModels.UserCredentials, error) {
+func (r *repository) GetById(ctx context.Context, userId string) (*usersModels.UserCredentials, error) {
 	query := "SELECT login, password, role FROM users WHERE uuid=$1"
 	log.Printf("Fetching user by id: %s", userId)
 
-	row := r.db.QueryRow(c.Context(), query, userId)
+	row := r.db.QueryRow(ctx, query, userId)
 
 	userCredentials := &usersModels.UserCredentials{}
 	err := row.Scan(&userCredentials.Login, &userCredentials.Password, &userCredentials.Role)
@@ -43,11 +44,11 @@ func (r *repository) GetById(c *fiber.Ctx, userId string) (*usersModels.UserCred
 	return userCredentials, nil
 }
 
-func (r *repository) GetByLogin(c *fiber.Ctx, login string) (*usersModels.UserRepoModel, error) {
+func (r *repository) GetByLogin(ctx context.Context, login string) (*usersModels.UserRepoModel, error) {
 	query := "SELECT uuid, login, password FROM users WHERE login=$1"
 	log.Printf("Fetching user by login: %s", login)
 
-	row := r.db.QueryRow(c.Context(), query, login)
+	row := r.db.QueryRow(ctx, query, login)
 
 	userCredentials := &usersModels.UserRepoModel{}
 	err := row.Scan(&userCredentials.Id, &userCredentials.Login, &userCredentials.Password)
@@ -63,7 +64,7 @@ func (r *repository) GetByLogin(c *fiber.Ctx, login string) (*usersModels.UserRe
 	return userCredentials, nil
 }
 
-func (r *repository) Create(c *fiber.Ctx, user usersModels.User) error {
+func (r *repository) Create(ctx context.Context, user usersModels.User) error {
 	query := "INSERT INTO users (last_name, name, login, password, role"
 
 	args := pgx.NamedArgs{
@@ -86,7 +87,7 @@ func (r *repository) Create(c *fiber.Ctx, user usersModels.User) error {
 	}
 
 	query += ")"
-	_, err := r.db.Exec(c.Context(), query, args)
+	_, err := r.db.Exec(ctx, query, args)
 	if err != nil {
 		log.Printf("Error creating user: %#v, error: %v", user, err)
 	} else {
@@ -96,7 +97,7 @@ func (r *repository) Create(c *fiber.Ctx, user usersModels.User) error {
 	return err
 }
 
-func (r *repository) ChangeUserInfo(c *fiber.Ctx, userId string, newRole usersModels.UserRole, newName string) error {
+func (r *repository) ChangeUserInfo(ctx context.Context, userId string, newRole usersModels.UserRole, newName string) error {
 	query := "UPDATE users SET role=@role, name=@name WHERE uuid=@uuid"
 	log.Printf("Changing user info for userId: %s to new role: %#v and new name: %#v", userId, newRole, newName)
 
@@ -105,7 +106,7 @@ func (r *repository) ChangeUserInfo(c *fiber.Ctx, userId string, newRole usersMo
 		"uuid": userId,
 		"name": newName,
 	}
-	_, err := r.db.Exec(c.Context(), query, args)
+	_, err := r.db.Exec(ctx, query, args)
 	if err != nil {
 		log.Printf("Error changing user info for userId: %s, error: %v", userId, err)
 	} else {
@@ -115,21 +116,21 @@ func (r *repository) ChangeUserInfo(c *fiber.Ctx, userId string, newRole usersMo
 	return err
 }
 
-func (r *repository) CheckUserExists(c *fiber.Ctx, userId string) (bool, error) {
+func (r *repository) CheckUserExists(ctx context.Context, userId string) (bool, error) {
 	query := "SELECT COUNT(*) FROM users WHERE uuid=$1"
 	var count int
-	err := r.db.QueryRow(c.Context(), query, userId).Scan(&count)
+	err := r.db.QueryRow(ctx, query, userId).Scan(&count)
 	if err != nil {
 		return false, err
 	}
 	return count > 0, nil
 }
 
-func (r *repository) GetUserInfo(c *fiber.Ctx, userId string) (*usersModels.UserInfoRepoModel, error) {
+func (r *repository) GetUserInfo(ctx context.Context, userId string) (*usersModels.UserInfoRepoModel, error) {
 	query := "SELECT uuid, name, login, role, last_name, middle_name FROM users WHERE uuid=$1"
 	log.Printf("Fetching user by id: %s", userId)
 
-	row := r.db.QueryRow(c.Context(), query, userId)
+	row := r.db.QueryRow(ctx, query, userId)
 
 	userInfo := &usersModels.UserInfoRepoModel{}
 	err := row.Scan(
@@ -152,11 +153,11 @@ func (r *repository) GetUserInfo(c *fiber.Ctx, userId string) (*usersModels.User
 	return userInfo, nil
 }
 
-func (r *repository) GetUsersInfo(c *fiber.Ctx) ([]usersModels.UserInfoRepoModel, error) {
+func (r *repository) GetUsersInfo(ctx context.Context) ([]usersModels.UserInfoRepoModel, error) {
 	query := "SELECT uuid, name, login, role, last_name, middle_name FROM users"
 	log.Printf("Fetching users")
 
-	rows, err := r.db.Query(c.Context(), query)
+	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		log.Printf("Error fetching users: %v", err)
 		return nil, err
@@ -189,19 +190,19 @@ func (r *repository) GetUsersInfo(c *fiber.Ctx) ([]usersModels.UserInfoRepoModel
 		return nil, err
 	}
 
-	log.Printf("Users info fetched successfully by")
+	log.Printf("Users info fetched successfully")
 	return usersInfo, nil
 }
 
-func (r *repository) DeleteUser(c *fiber.Ctx, userId string) error {
-	tx, err := r.db.Begin(c.Context())
+func (r *repository) DeleteUser(ctx context.Context, userId string) error {
+	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 
 	defer func() {
 		if err != nil {
-			if rbErr := tx.Rollback(c.Context()); rbErr != nil {
+			if rbErr := tx.Rollback(ctx); rbErr != nil {
 				log.Printf("Error rolling back transaction: %v", rbErr)
 			}
 		}
@@ -209,28 +210,28 @@ func (r *repository) DeleteUser(c *fiber.Ctx, userId string) error {
 
 	query := "DELETE FROM users WHERE uuid=$1"
 
-	if _, err = tx.Exec(c.Context(), query, userId); err != nil {
+	if _, err = tx.Exec(ctx, query, userId); err != nil {
 		log.Printf("Error deleting user with id %s, err %v", userId, err)
 		return err
 	}
 
-	if err = tx.Commit(c.Context()); err != nil {
+	if err = tx.Commit(ctx); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (r *repository) GetAvailableTeachers(c *fiber.Ctx, teacherName string) ([]usersModels.UserInfoRepoModel, error) {
+func (r *repository) GetAvailableTeachers(ctx context.Context, teacherName string) ([]usersModels.UserInfoRepoModel, error) {
 	query := `
 	SELECT uuid, name, login, last_name, middle_name
-	FROM users 
+	FROM users
 	WHERE last_name || name || middle_name LIKE '%' || $1 || '%'
 	AND role = 'teacher'
 	`
 	log.Printf("Fetching teachers by name: %s", teacherName)
 
-	rows, err := r.db.Query(c.Context(), query, teacherName)
+	rows, err := r.db.Query(ctx, query, teacherName)
 	if err != nil {
 		log.Printf("Error fetching teachers by name: %v", err)
 		return nil, err

@@ -1,15 +1,16 @@
 package groups
 
 import (
+	"context"
 	"database/sql"
 	"errors"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	groupsModels "sad/internal/models/groups"
 	subjectsModels "sad/internal/models/subjects"
 	usersModels "sad/internal/models/users"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/jackc/pgx/v5"
 )
 
@@ -23,7 +24,7 @@ func NewRepository(db *pgxpool.Pool) *repository {
 	}
 }
 
-func (r *repository) Create(c *fiber.Ctx, group groupsModels.Group) error {
+func (r *repository) Create(ctx context.Context, group groupsModels.Group) error {
 	query := "INSERT INTO groups (id, number) VALUES (@id, @number)"
 	log.Printf("Creating group: %#v", group)
 
@@ -31,7 +32,7 @@ func (r *repository) Create(c *fiber.Ctx, group groupsModels.Group) error {
 		"id":     group.Id,
 		"number": group.Number,
 	}
-	_, err := r.db.Exec(c.Context(), query, args)
+	_, err := r.db.Exec(ctx, query, args)
 	if err != nil {
 		log.Printf("Error creating group: %#v, error: %v", group, err)
 	} else {
@@ -41,11 +42,11 @@ func (r *repository) Create(c *fiber.Ctx, group groupsModels.Group) error {
 	return err
 }
 
-func (r *repository) GetById(c *fiber.Ctx, groupId string) (*groupsModels.GroupRepoModel, error) {
+func (r *repository) GetById(ctx context.Context, groupId string) (*groupsModels.GroupRepoModel, error) {
 	query := "SELECT id, number FROM groups WHERE id=$1"
 	log.Printf("Fetching group by id: %s", groupId)
 
-	row := r.db.QueryRow(c.Context(), query, groupId)
+	row := r.db.QueryRow(ctx, query, groupId)
 
 	group := &groupsModels.GroupRepoModel{}
 	err := row.Scan(&group.Id, &group.Number)
@@ -61,11 +62,11 @@ func (r *repository) GetById(c *fiber.Ctx, groupId string) (*groupsModels.GroupR
 	return group, nil
 }
 
-func (r *repository) GetAll(c *fiber.Ctx) ([]groupsModels.GroupRepoModel, error) {
+func (r *repository) GetAll(ctx context.Context) ([]groupsModels.GroupRepoModel, error) {
 	query := "SELECT id, number FROM groups"
 	log.Printf("Fetching all groups")
 
-	rows, err := r.db.Query(c.Context(), query)
+	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		log.Printf("Error fetching all groups: %v", err)
 		return nil, err
@@ -93,7 +94,7 @@ func (r *repository) GetAll(c *fiber.Ctx) ([]groupsModels.GroupRepoModel, error)
 	return groups, nil
 }
 
-func (r *repository) AddUserToGroup(c *fiber.Ctx, groupId string, userId string) error {
+func (r *repository) AddUserToGroup(ctx context.Context, groupId string, userId string) error {
 	// TODO: check is user already in some group
 	query := "INSERT INTO users_groups (user_id, group_id) VALUES (@user_id, @group_id)"
 	args := pgx.NamedArgs{
@@ -102,7 +103,7 @@ func (r *repository) AddUserToGroup(c *fiber.Ctx, groupId string, userId string)
 	}
 	log.Printf("Adding user %s to group %s", userId, groupId)
 
-	_, err := r.db.Exec(c.Context(), query, args)
+	_, err := r.db.Exec(ctx, query, args)
 	if err != nil {
 		log.Printf("Error adding user to group: user_id=%s, group_id=%s, error: %v", userId, groupId, err)
 		return err
@@ -112,7 +113,7 @@ func (r *repository) AddUserToGroup(c *fiber.Ctx, groupId string, userId string)
 	return nil
 }
 
-func (r *repository) DeleteUserFromGroup(c *fiber.Ctx, groupId string, userId string) error {
+func (r *repository) DeleteUserFromGroup(ctx context.Context, groupId string, userId string) error {
 	query := "DELETE FROM users_groups WHERE user_id=@user_id AND group_id=@group_id"
 	args := pgx.NamedArgs{
 		"user_id":  userId,
@@ -120,7 +121,7 @@ func (r *repository) DeleteUserFromGroup(c *fiber.Ctx, groupId string, userId st
 	}
 	log.Printf("Deleting user %s from group %s", userId, groupId)
 
-	_, err := r.db.Exec(c.Context(), query, args)
+	_, err := r.db.Exec(ctx, query, args)
 	if err != nil {
 		log.Printf("Error deleting user from group: user_id=%s, group_id=%s, error: %v", userId, groupId, err)
 		return err
@@ -130,7 +131,7 @@ func (r *repository) DeleteUserFromGroup(c *fiber.Ctx, groupId string, userId st
 	return nil
 }
 
-func (r *repository) IsUserInGroup(c *fiber.Ctx, groupId, userId string) (bool, error) {
+func (r *repository) IsUserInGroup(ctx context.Context, groupId, userId string) (bool, error) {
 	log.Printf("Checking if user with ID '%s' is in group with ID '%s'\n", userId, groupId)
 
 	query := "SELECT COUNT(*) FROM users_groups WHERE user_id=@user_id and group_id=@group_id"
@@ -140,7 +141,7 @@ func (r *repository) IsUserInGroup(c *fiber.Ctx, groupId, userId string) (bool, 
 	}
 
 	var count int
-	err := r.db.QueryRow(c.Context(), query, args).Scan(&count)
+	err := r.db.QueryRow(ctx, query, args).Scan(&count)
 	if err != nil {
 		log.Printf("Error checking if user '%s' is in group '%s': %v\n", userId, groupId, err)
 		return false, err
@@ -155,7 +156,7 @@ func (r *repository) IsUserInGroup(c *fiber.Ctx, groupId, userId string) (bool, 
 	return count > 0, nil
 }
 
-func (r *repository) GetWithDetailsById(c *fiber.Ctx, groupId string) (*groupsModels.GroupDetailsRepo, error) {
+func (r *repository) GetWithDetailsById(ctx context.Context, groupId string) (*groupsModels.GroupDetailsRepo, error) {
 	query := `
 		SELECT g.id, g.number, u.uuid, u.login, u.name, u.role, u.last_name, u.middle_name
 		FROM groups g
@@ -167,7 +168,7 @@ func (r *repository) GetWithDetailsById(c *fiber.Ctx, groupId string) (*groupsMo
 		"group_id": groupId,
 	}
 
-	rows, err := r.db.Query(c.Context(), query, args)
+	rows, err := r.db.Query(ctx, query, args)
 	if err != nil {
 		log.Printf("Error fetching group with users: %v", err)
 		return nil, err
@@ -215,15 +216,15 @@ func (r *repository) GetWithDetailsById(c *fiber.Ctx, groupId string) (*groupsMo
 	return &group, nil
 }
 
-func (r *repository) DeleteGroup(c *fiber.Ctx, groupId string) error {
-	tx, err := r.db.Begin(c.Context())
+func (r *repository) DeleteGroup(ctx context.Context, groupId string) error {
+	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 
 	defer func() {
 		if err != nil {
-			if rbErr := tx.Rollback(c.Context()); rbErr != nil {
+			if rbErr := tx.Rollback(ctx); rbErr != nil {
 				log.Printf("Error rolling back transaction: %v", rbErr)
 			}
 		}
@@ -235,14 +236,14 @@ func (r *repository) DeleteGroup(c *fiber.Ctx, groupId string) error {
 
 	query := "DELETE FROM users_groups WHERE group_id=@group_id"
 
-	if _, err = tx.Exec(c.Context(), query, args); err != nil {
+	if _, err = tx.Exec(ctx, query, args); err != nil {
 		log.Printf("Error deleting users from group with id %s , err: %v", groupId, err)
 		return err
 	}
 	log.Printf("Delete users from group with id %s successfully", groupId)
 
 	query = "DELETE FROM groups_subjects WHERE group_id=@group_id"
-	if _, err = tx.Exec(c.Context(), query, args); err != nil {
+	if _, err = tx.Exec(ctx, query, args); err != nil {
 		log.Printf("Error deleting subjects from group with id %s , err: %v", groupId, err)
 		return err
 	}
@@ -250,26 +251,26 @@ func (r *repository) DeleteGroup(c *fiber.Ctx, groupId string) error {
 
 	query = "DELETE FROM groups WHERE id=@group_id"
 
-	if _, err = tx.Exec(c.Context(), query, args); err != nil {
+	if _, err = tx.Exec(ctx, query, args); err != nil {
 		log.Printf("Error deleting group with id %s , err: %v", groupId, err)
 		return err
 	}
 
-	if err = tx.Commit(c.Context()); err != nil {
+	if err = tx.Commit(ctx); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (r *repository) UpdateGroup(c *fiber.Ctx, group groupsModels.Group) error {
+func (r *repository) UpdateGroup(ctx context.Context, group groupsModels.Group) error {
 	query := "UPDATE groups SET number=@number WHERE id=@group_id"
 	args := pgx.NamedArgs{
 		"group_id": group.Id,
 		"number":   group.Number,
 	}
 
-	_, err := r.db.Exec(c.Context(), query, args)
+	_, err := r.db.Exec(ctx, query, args)
 	if err != nil {
 		log.Printf("Error updating group with id %s, err: %v", group.Id, err)
 	} else {
@@ -279,25 +280,25 @@ func (r *repository) UpdateGroup(c *fiber.Ctx, group groupsModels.Group) error {
 	return err
 }
 
-func (r *repository) CheckGroupExists(c *fiber.Ctx, groupId string) (bool, error) {
+func (r *repository) CheckGroupExists(ctx context.Context, groupId string) (bool, error) {
 	query := "SELECT COUNT(*) FROM groups WHERE id=$1"
 	var count int
-	err := r.db.QueryRow(c.Context(), query, groupId).Scan(&count)
+	err := r.db.QueryRow(ctx, query, groupId).Scan(&count)
 	if err != nil {
 		return false, err
 	}
 	return count > 0, nil
 }
 
-func (r *repository) GetAvailableNewUsers(c *fiber.Ctx, groupId, login string) ([]usersModels.UserInfoRepoModel, error) {
+func (r *repository) GetAvailableNewUsers(ctx context.Context, groupId, login string) ([]usersModels.UserInfoRepoModel, error) {
 	query := `
 	SELECT uuid, name, login, last_name, middle_name
-	FROM users u 
+	FROM users u
 	WHERE login LIKE '%' || @login || '%' AND u.role = 'student'
 	AND NOT EXISTS (
-		SELECT 1 
-		FROM users_groups ug 
-		WHERE u.uuid = ug.user_id 
+		SELECT 1
+		FROM users_groups ug
+		WHERE u.uuid = ug.user_id
 	)
 	`
 
@@ -306,7 +307,7 @@ func (r *repository) GetAvailableNewUsers(c *fiber.Ctx, groupId, login string) (
 		"groupId": groupId,
 	}
 
-	rows, err := r.db.Query(c.Context(), query, args)
+	rows, err := r.db.Query(ctx, query, args)
 	if err != nil {
 		log.Printf("Error fetching group with users: %v", err)
 		return nil, err
@@ -336,7 +337,7 @@ func (r *repository) GetAvailableNewUsers(c *fiber.Ctx, groupId, login string) (
 	return users, nil
 }
 
-func (r *repository) GetGroupsWithSubjectsByTeacher(c *fiber.Ctx, teacherId string) ([]subjectsModels.GroupsWithSubjectsRepoModel, error) {
+func (r *repository) GetGroupsWithSubjectsByTeacher(ctx context.Context, teacherId string) ([]subjectsModels.GroupsWithSubjectsRepoModel, error) {
 	query := `
 	SELECT g.id, g.number, s.id, s.name
 	FROM subjects_teachers st
@@ -346,7 +347,7 @@ func (r *repository) GetGroupsWithSubjectsByTeacher(c *fiber.Ctx, teacherId stri
 	WHERE st.teacher_id = $1
 	`
 
-	rows, err := r.db.Query(c.Context(), query, teacherId)
+	rows, err := r.db.Query(ctx, query, teacherId)
 	if err != nil {
 		log.Printf("Error fetching groups with subjects: %v", err)
 		return nil, err
@@ -392,9 +393,9 @@ func (r *repository) GetGroupsWithSubjectsByTeacher(c *fiber.Ctx, teacherId stri
 	return groupsWithSubjects, nil
 }
 
-func (r *repository) GetGroupsBySubjectAndTeacher(c *fiber.Ctx, teacherId, subjectId string) ([]groupsModels.GroupRepoModel, error) {
+func (r *repository) GetGroupsBySubjectAndTeacher(ctx context.Context, teacherId, subjectId string) ([]groupsModels.GroupRepoModel, error) {
 	query := `
-		SELECT g.id, number 
+		SELECT g.id, number
 		FROM groups g
 		JOIN groups_subjects gs ON g.id = gs.group_id
 		JOIN subjects_teachers st ON gs.subject_teacher_id = st.id
@@ -407,7 +408,7 @@ func (r *repository) GetGroupsBySubjectAndTeacher(c *fiber.Ctx, teacherId, subje
 		"subjectId": subjectId,
 	}
 
-	rows, err := r.db.Query(c.Context(), query, args)
+	rows, err := r.db.Query(ctx, query, args)
 	if err != nil {
 		log.Printf("Error fetching groups by subject and teacher: %v", err)
 		return nil, err

@@ -22,10 +22,10 @@ type UserGroup struct {
 
 type GroupDetails struct {
 	Group
-	Users []usersModels.UserInfo `json:"users"`
+	Users []users.UserInfo `json:"users"`
 }
 
 type GroupDetailsRepo struct {
 	GroupRepoModel
-	Users []usersModels.UserInfoRepoModel
+	Users []users.UserInfoRepoModel
 }

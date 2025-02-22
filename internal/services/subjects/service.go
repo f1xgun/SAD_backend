@@ -1,6 +1,7 @@
 package subjects
 
 import (
+	"context"
 	"errors"
 	"log"
 	subjectsMappers "sad/internal/mappers/subjects"
@@ -8,7 +9,6 @@ import (
 	usersModels "sad/internal/models/users"
 	"sad/internal/repositories"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	errorsModels "sad/internal/models/errors"
@@ -33,7 +33,7 @@ func NewService(
 	}
 }
 
-func (s *service) Create(c *fiber.Ctx, name string) error {
+func (s *service) Create(ctx context.Context, name string) error {
 	log.Println("Creating a new group with name:", name)
 
 	if name == "" {
@@ -44,7 +44,7 @@ func (s *service) Create(c *fiber.Ctx, name string) error {
 		Name: name,
 	}
 
-	if _, err := s.subjectsRepository.Create(c, newSubject); err != nil {
+	if _, err := s.subjectsRepository.Create(ctx, newSubject); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			switch pgErr.Code {
@@ -61,16 +61,16 @@ func (s *service) Create(c *fiber.Ctx, name string) error {
 	return nil
 }
 
-func (s *service) GetAll(c *fiber.Ctx) ([]subjectsModels.Subject, error) {
+func (s *service) GetAll(ctx context.Context) ([]subjectsModels.Subject, error) {
 	log.Println("Retrieving all subjects")
-	subjectsRepo, err := s.subjectsRepository.GetAll(c)
+	subjectsRepo, err := s.subjectsRepository.GetAll(ctx)
 
 	subjects := subjectsMappers.FromSubjectsRepoModelToEntity(subjectsRepo)
 
 	return subjects, err
 }
 
-func (s *service) AddSubjectToGroup(c *fiber.Ctx, subjectGroup subjectsModels.SubjectGroup) error {
+func (s *service) AddSubjectToGroup(ctx context.Context, subjectGroup subjectsModels.SubjectGroup) error {
 	log.Printf("Attempting to add subject with ID '%s' and teacher with ID '%s' to group '%s'.",
 		subjectGroup.SubjectId, subjectGroup.TeacherId, subjectGroup.GroupId)
 
@@ -84,7 +84,7 @@ func (s *service) AddSubjectToGroup(c *fiber.Ctx, subjectGroup subjectsModels.Su
 		return errors.New("teacher_id is required")
 	}
 
-	subject, err := s.subjectsRepository.GetById(c, subjectGroup.SubjectId)
+	subject, err := s.subjectsRepository.GetById(ctx, subjectGroup.SubjectId)
 	if err != nil {
 		log.Printf("Error retrieving subject '%s': %v", subjectGroup.SubjectId, err)
 		return err
@@ -95,7 +95,7 @@ func (s *service) AddSubjectToGroup(c *fiber.Ctx, subjectGroup subjectsModels.Su
 		return errorsModels.ErrSubjectDoesNotExist
 	}
 
-	groupExist, err := s.groupsRepository.CheckGroupExists(c, subjectGroup.GroupId)
+	groupExist, err := s.groupsRepository.CheckGroupExists(ctx, subjectGroup.GroupId)
 	if err != nil {
 		log.Printf("Error checking existence of group '%s': %v", subjectGroup.GroupId, err)
 		return err
@@ -106,7 +106,7 @@ func (s *service) AddSubjectToGroup(c *fiber.Ctx, subjectGroup subjectsModels.Su
 		return errorsModels.ErrGroupDoesNotExist
 	}
 
-	teacherExist, err := s.usersRepository.GetById(c, subjectGroup.TeacherId)
+	teacherExist, err := s.usersRepository.GetById(ctx, subjectGroup.TeacherId)
 
 	if err != nil {
 		log.Printf("Error checking existence of teacher '%s': %v", subjectGroup.TeacherId, err)
@@ -123,7 +123,7 @@ func (s *service) AddSubjectToGroup(c *fiber.Ctx, subjectGroup subjectsModels.Su
 		return errorsModels.ErrNoPermission
 	}
 
-	if err := s.subjectsRepository.AddSubjectToGroup(c, subjectGroup); err != nil {
+	if err := s.subjectsRepository.AddSubjectToGroup(ctx, subjectGroup); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			switch pgErr.Code {
@@ -142,7 +142,7 @@ func (s *service) AddSubjectToGroup(c *fiber.Ctx, subjectGroup subjectsModels.Su
 	return nil
 }
 
-func (s *service) DeleteSubjectFromGroup(c *fiber.Ctx, subjectId string, groupId string) error {
+func (s *service) DeleteSubjectFromGroup(ctx context.Context, subjectId string, groupId string) error {
 	log.Printf("Attempting to delete subject '%s' from group '%s'.", subjectId, groupId)
 
 	if subjectId == "" {
@@ -150,7 +150,7 @@ func (s *service) DeleteSubjectFromGroup(c *fiber.Ctx, subjectId string, groupId
 		return errors.New("subject_id is required")
 	}
 
-	subject, err := s.subjectsRepository.GetById(c, subjectId)
+	subject, err := s.subjectsRepository.GetById(ctx, subjectId)
 	if err != nil {
 		log.Printf("Error retrieving subject '%s': %v", subjectId, err)
 		return err
@@ -160,7 +160,7 @@ func (s *service) DeleteSubjectFromGroup(c *fiber.Ctx, subjectId string, groupId
 		return errorsModels.ErrSubjectDoesNotExist
 	}
 
-	subjectInGroup, err := s.subjectsRepository.IsSubjectInGroup(c, subjectId, groupId)
+	subjectInGroup, err := s.subjectsRepository.IsSubjectInGroup(ctx, subjectId, groupId)
 	if err != nil {
 		log.Printf("Error checking if group '%s' has subject '%s': %v", groupId, subjectId, err)
 		return err
@@ -171,7 +171,7 @@ func (s *service) DeleteSubjectFromGroup(c *fiber.Ctx, subjectId string, groupId
 		return errorsModels.ErrGroupNotHasSubject
 	}
 
-	if err := s.subjectsRepository.DeleteSubjectFromGroup(c, subjectId, groupId); err != nil {
+	if err := s.subjectsRepository.DeleteSubjectFromGroup(ctx, subjectId, groupId); err != nil {
 		log.Printf("Error deleting subject '%s' from group '%s': %v", subjectId, groupId, err)
 		return err
 	}
@@ -180,10 +180,10 @@ func (s *service) DeleteSubjectFromGroup(c *fiber.Ctx, subjectId string, groupId
 	return nil
 }
 
-func (s *service) DeleteSubject(c *fiber.Ctx, subjectId string) error {
+func (s *service) DeleteSubject(ctx context.Context, subjectId string) error {
 	log.Printf("Attempting to delete subject '%s'.", subjectId)
 
-	subject, err := s.subjectsRepository.GetById(c, subjectId)
+	subject, err := s.subjectsRepository.GetById(ctx, subjectId)
 	if err != nil {
 		log.Printf("Error retrieving subject '%s': %v", subjectId, err)
 		return err
@@ -194,7 +194,7 @@ func (s *service) DeleteSubject(c *fiber.Ctx, subjectId string) error {
 		return errorsModels.ErrSubjectDoesNotExist
 	}
 
-	if err := s.subjectsRepository.DeleteSubject(c, subjectId); err != nil {
+	if err := s.subjectsRepository.DeleteSubject(ctx, subjectId); err != nil {
 		log.Printf("Error deleting subject '%s': %v", subjectId, err)
 		return err
 	}
@@ -203,10 +203,10 @@ func (s *service) DeleteSubject(c *fiber.Ctx, subjectId string) error {
 	return nil
 }
 
-func (s *service) UpdateSubject(c *fiber.Ctx, subjectId string, subject subjectsModels.Subject) error {
+func (s *service) UpdateSubject(ctx context.Context, subjectId string, subject subjectsModels.Subject) error {
 	log.Printf("Attempting to update subject '%s'.", subjectId)
 
-	existedSubject, err := s.subjectsRepository.GetById(c, subjectId)
+	existedSubject, err := s.subjectsRepository.GetById(ctx, subjectId)
 	if err != nil {
 		log.Printf("Error retrieving subject '%s': %v", subjectId, err)
 		return err
@@ -222,7 +222,7 @@ func (s *service) UpdateSubject(c *fiber.Ctx, subjectId string, subject subjects
 		subject.Name = existedSubject.Name.String
 	}
 
-	if err := s.subjectsRepository.UpdateSubject(c, subject); err != nil {
+	if err := s.subjectsRepository.UpdateSubject(ctx, subject); err != nil {
 		log.Printf("Error updating subject '%s': %v", subjectId, err)
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
@@ -242,9 +242,9 @@ func (s *service) UpdateSubject(c *fiber.Ctx, subjectId string, subject subjects
 	return nil
 }
 
-func (s *service) GetAvailableTeachers(c *fiber.Ctx, teacherName string) ([]usersModels.UserInfo, error) {
+func (s *service) GetAvailableTeachers(ctx context.Context, teacherName string) ([]usersModels.UserInfo, error) {
 	log.Printf("Attempting to get available teachers with name %s", teacherName)
-	usersRepo, err := s.usersRepository.GetAvailableTeachers(c, teacherName)
+	usersRepo, err := s.usersRepository.GetAvailableTeachers(ctx, teacherName)
 	if err != nil {
 		log.Printf("Error get available teachers with name %s", teacherName)
 		return nil, err
@@ -255,9 +255,9 @@ func (s *service) GetAvailableTeachers(c *fiber.Ctx, teacherName string) ([]user
 	return users, nil
 }
 
-func (s *service) GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjectsModels.Subject, error) {
+func (s *service) GetByIdWithDetails(ctx context.Context, subjectId string) (*subjectsModels.Subject, error) {
 	log.Printf("Attempting to get subject with details")
-	subjectRepo, err := s.subjectsRepository.GetByIdWithDetails(c, subjectId)
+	subjectRepo, err := s.subjectsRepository.GetByIdWithDetails(ctx, subjectId)
 	if err != nil {
 		log.Printf("Error retrieving subject with ID: %s, error: %v", subjectId, err)
 		return nil, err
@@ -275,27 +275,27 @@ func (s *service) GetByIdWithDetails(c *fiber.Ctx, subjectId string) (*subjectsM
 	return &subject, nil
 }
 
-func (s *service) GetSubjectsByTeacherId(c *fiber.Ctx, teacherId string) ([]subjectsModels.Subject, error) {
+func (s *service) GetSubjectsByTeacherId(ctx context.Context, teacherId string) ([]subjectsModels.Subject, error) {
 	log.Printf("Attempting to get subjects by teacher id %v", teacherId)
-	subjectsRepo, err := s.subjectsRepository.GetSubjectsByTeacherId(c, teacherId)
+	subjectsRepo, err := s.subjectsRepository.GetSubjectsByTeacherId(ctx, teacherId)
 
 	subjects := subjectsMappers.FromSubjectsRepoModelToEntity(subjectsRepo)
 
 	return subjects, err
 }
 
-func (s *service) GetNewAvailableSubjectsForTeacher(c *fiber.Ctx, teacherId string) ([]subjectsModels.Subject, error) {
+func (s *service) GetNewAvailableSubjectsForTeacher(ctx context.Context, teacherId string) ([]subjectsModels.Subject, error) {
 	log.Printf("Attempting to get new subjects by teacher id %v", teacherId)
-	subjectsRepo, err := s.subjectsRepository.GetNewSubjectsForTeacher(c, teacherId)
+	subjectsRepo, err := s.subjectsRepository.GetNewSubjectsForTeacher(ctx, teacherId)
 
 	subjects := subjectsMappers.FromSubjectsRepoModelToEntity(subjectsRepo)
 
 	return subjects, err
 }
 
-func (s *service) EditTeacherSubjects(c *fiber.Ctx, teacherId string, subjects []subjectsModels.Subject) error {
+func (s *service) EditTeacherSubjects(ctx context.Context, teacherId string, subjects []subjectsModels.Subject) error {
 	log.Printf("Attempting to edit subjects by teacher id %v", teacherId)
-	err := s.subjectsRepository.UpdateTeacherSubjects(c, teacherId, subjects)
+	err := s.subjectsRepository.UpdateTeacherSubjects(ctx, teacherId, subjects)
 
 	return err
 }

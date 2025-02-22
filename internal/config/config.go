@@ -6,7 +6,20 @@ import (
 	"github.com/spf13/viper"
 )
 
+type Env string
+
+const (
+	Local Env = "local"
+	Dev       = "dev"
+	Prod      = "prod"
+)
+
 type Config struct {
+	Address     string        `mapstructure:"Address"`
+	Environment Env           `mapstructure:"environment"`
+	Timeout     time.Duration `mapstructure:"timeout"`
+	IdleTimeout time.Duration `mapstructure:"idle_timeout"`
+
 	DBHost         string `mapstructure:"POSTGRES_HOST"`
 	DBUserName     string `mapstructure:"POSTGRES_USER"`
 	DBUserPassword string `mapstructure:"POSTGRES_PASSWORD"`
@@ -22,6 +35,7 @@ type Config struct {
 func LoadConfig(path string) (Config, error) {
 	var config Config
 	viper.AddConfigPath(path)
+	viper.SetConfigName(".env")
 	viper.SetConfigType("env")
 
 	viper.AutomaticEnv()

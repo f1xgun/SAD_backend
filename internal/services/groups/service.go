@@ -1,6 +1,7 @@
 package groups
 
 import (
+	"context"
 	"errors"
 	"log"
 	usersMapper "sad/internal/mappers/users"
@@ -8,7 +9,6 @@ import (
 	usersModels "sad/internal/models/users"
 	"sad/internal/repositories"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
@@ -29,7 +29,7 @@ func NewService(groupsRepository repositories.GroupsRepository, usersRepository 
 	}
 }
 
-func (s *service) Create(c *fiber.Ctx, number string) error {
+func (s *service) Create(ctx context.Context, number string) error {
 	log.Println("Creating a new group with number:", number)
 
 	if number == "" {
@@ -41,7 +41,7 @@ func (s *service) Create(c *fiber.Ctx, number string) error {
 		Number: number,
 	}
 
-	if err := s.groupsRepository.Create(c, newGroup); err != nil {
+	if err := s.groupsRepository.Create(ctx, newGroup); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			switch pgErr.Code {
@@ -58,10 +58,10 @@ func (s *service) Create(c *fiber.Ctx, number string) error {
 	return nil
 }
 
-func (s *service) GetById(c *fiber.Ctx, groupId string) (*groupsModels.Group, error) {
+func (s *service) GetById(ctx context.Context, groupId string) (*groupsModels.Group, error) {
 	log.Printf("Retrieving group with ID: %s\n", groupId)
 
-	groupRepo, err := s.groupsRepository.GetById(c, groupId)
+	groupRepo, err := s.groupsRepository.GetById(ctx, groupId)
 	if err != nil {
 		log.Printf("Error retrieving group with ID: %s, error: %v\n", groupId, err)
 		return nil, err
@@ -79,10 +79,10 @@ func (s *service) GetById(c *fiber.Ctx, groupId string) (*groupsModels.Group, er
 	return &group, nil
 }
 
-func (s *service) GetWithDetailsById(c *fiber.Ctx, groupId string) (*groupsModels.GroupDetails, error) {
+func (s *service) GetWithDetailsById(ctx context.Context, groupId string) (*groupsModels.GroupDetails, error) {
 	log.Printf("Retrieving group with ID: %s\n", groupId)
 
-	groupRepo, err := s.groupsRepository.GetWithDetailsById(c, groupId)
+	groupRepo, err := s.groupsRepository.GetWithDetailsById(ctx, groupId)
 	if err != nil {
 		log.Printf("Error retrieving group with ID: %s, error: %v\n", groupId, err)
 		return nil, err
@@ -100,9 +100,9 @@ func (s *service) GetWithDetailsById(c *fiber.Ctx, groupId string) (*groupsModel
 	return &group, nil
 }
 
-func (s *service) GetAll(c *fiber.Ctx) ([]groupsModels.Group, error) {
+func (s *service) GetAll(ctx context.Context) ([]groupsModels.Group, error) {
 	log.Println("Retrieving all groups")
-	groupsRepo, err := s.groupsRepository.GetAll(c)
+	groupsRepo, err := s.groupsRepository.GetAll(ctx)
 
 	if err != nil {
 		log.Printf("Error retrieving all groups")
@@ -114,7 +114,7 @@ func (s *service) GetAll(c *fiber.Ctx) ([]groupsModels.Group, error) {
 	return groups, nil
 }
 
-func (s *service) AddUserToGroup(c *fiber.Ctx, groupId string, userId string) error {
+func (s *service) AddUserToGroup(ctx context.Context, groupId string, userId string) error {
 	log.Printf("Attempting to add user with ID '%s' to group '%s'.", userId, groupId)
 
 	if userId == "" {
@@ -122,7 +122,7 @@ func (s *service) AddUserToGroup(c *fiber.Ctx, groupId string, userId string) er
 		return errors.New("user_id is required")
 	}
 
-	group, err := s.groupsRepository.GetById(c, groupId)
+	group, err := s.groupsRepository.GetById(ctx, groupId)
 	if err != nil {
 		log.Printf("Error retrieving group '%s': %v", groupId, err)
 		return err
@@ -133,7 +133,7 @@ func (s *service) AddUserToGroup(c *fiber.Ctx, groupId string, userId string) er
 		return errorsModels.ErrGroupDoesNotExist
 	}
 
-	userExist, err := s.usersRepository.CheckUserExists(c, userId)
+	userExist, err := s.usersRepository.CheckUserExists(ctx, userId)
 	if err != nil {
 		log.Printf("Error checking existence of user '%s': %v", userId, err)
 		return err
@@ -144,7 +144,7 @@ func (s *service) AddUserToGroup(c *fiber.Ctx, groupId string, userId string) er
 		return errorsModels.ErrUserDoesNotExist
 	}
 
-	if err := s.groupsRepository.AddUserToGroup(c, groupId, userId); err != nil {
+	if err := s.groupsRepository.AddUserToGroup(ctx, groupId, userId); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			switch pgErr.Code {
@@ -162,7 +162,7 @@ func (s *service) AddUserToGroup(c *fiber.Ctx, groupId string, userId string) er
 	return nil
 }
 
-func (s *service) DeleteUserFromGroup(c *fiber.Ctx, groupId string, userId string) error {
+func (s *service) DeleteUserFromGroup(ctx context.Context, groupId string, userId string) error {
 	log.Printf("Attempting to delete user '%s' from group '%s'.", userId, groupId)
 
 	if userId == "" {
@@ -170,7 +170,7 @@ func (s *service) DeleteUserFromGroup(c *fiber.Ctx, groupId string, userId strin
 		return errors.New("user_id is required")
 	}
 
-	group, err := s.groupsRepository.GetById(c, groupId)
+	group, err := s.groupsRepository.GetById(ctx, groupId)
 	if err != nil {
 		log.Printf("Error retrieving group '%s': %v", groupId, err)
 		return err
@@ -180,7 +180,7 @@ func (s *service) DeleteUserFromGroup(c *fiber.Ctx, groupId string, userId strin
 		return errorsModels.ErrGroupDoesNotExist
 	}
 
-	userInGroup, err := s.groupsRepository.IsUserInGroup(c, groupId, userId)
+	userInGroup, err := s.groupsRepository.IsUserInGroup(ctx, groupId, userId)
 	if err != nil {
 		log.Printf("Error checking if user '%s' is in group '%s': %v", userId, groupId, err)
 		return err
@@ -191,7 +191,7 @@ func (s *service) DeleteUserFromGroup(c *fiber.Ctx, groupId string, userId strin
 		return errorsModels.ErrUserNotInGroup
 	}
 
-	if err := s.groupsRepository.DeleteUserFromGroup(c, groupId, userId); err != nil {
+	if err := s.groupsRepository.DeleteUserFromGroup(ctx, groupId, userId); err != nil {
 		log.Printf("Error deleting user '%s' from group '%s': %v", userId, groupId, err)
 		return err
 	}
@@ -200,10 +200,10 @@ func (s *service) DeleteUserFromGroup(c *fiber.Ctx, groupId string, userId strin
 	return nil
 }
 
-func (s *service) DeleteGroup(c *fiber.Ctx, groupId string) error {
+func (s *service) DeleteGroup(ctx context.Context, groupId string) error {
 	log.Printf("Attempting to delete group '%s'.", groupId)
 
-	group, err := s.groupsRepository.GetById(c, groupId)
+	group, err := s.groupsRepository.GetById(ctx, groupId)
 	if err != nil {
 		log.Printf("Error retrieving group '%s': %v", groupId, err)
 		return err
@@ -214,7 +214,7 @@ func (s *service) DeleteGroup(c *fiber.Ctx, groupId string) error {
 		return errorsModels.ErrGroupDoesNotExist
 	}
 
-	if err := s.groupsRepository.DeleteGroup(c, groupId); err != nil {
+	if err := s.groupsRepository.DeleteGroup(ctx, groupId); err != nil {
 		log.Printf("Error deleting group '%s': %v", groupId, err)
 		return err
 	}
@@ -223,10 +223,10 @@ func (s *service) DeleteGroup(c *fiber.Ctx, groupId string) error {
 	return nil
 }
 
-func (s *service) UpdateGroup(c *fiber.Ctx, groupId string, group groupsModels.Group) error {
+func (s *service) UpdateGroup(ctx context.Context, groupId string, group groupsModels.Group) error {
 	log.Printf("Attempting to update group '%s'.", groupId)
 
-	existedGroup, err := s.groupsRepository.GetById(c, groupId)
+	existedGroup, err := s.groupsRepository.GetById(ctx, groupId)
 	if err != nil {
 		log.Printf("Error retrieving group '%s': %v", groupId, err)
 		return err
@@ -242,7 +242,7 @@ func (s *service) UpdateGroup(c *fiber.Ctx, groupId string, group groupsModels.G
 		group.Number = existedGroup.Number.String
 	}
 
-	if err := s.groupsRepository.UpdateGroup(c, group); err != nil {
+	if err := s.groupsRepository.UpdateGroup(ctx, group); err != nil {
 		log.Printf("Error updating group '%s': %v", groupId, err)
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
@@ -262,9 +262,9 @@ func (s *service) UpdateGroup(c *fiber.Ctx, groupId string, group groupsModels.G
 	return nil
 }
 
-func (s *service) GetAvailableNewUsers(c *fiber.Ctx, groupId, login string) ([]usersModels.UserInfo, error) {
+func (s *service) GetAvailableNewUsers(ctx context.Context, groupId, login string) ([]usersModels.UserInfo, error) {
 	log.Printf("Attempting to get available new users for group with id %s and login %s", groupId, login)
-	usersRepo, err := s.groupsRepository.GetAvailableNewUsers(c, groupId, login)
+	usersRepo, err := s.groupsRepository.GetAvailableNewUsers(ctx, groupId, login)
 	if err != nil {
 		log.Printf("Error get available new users for group with id %s and login %s", groupId, login)
 		return nil, err
@@ -275,8 +275,8 @@ func (s *service) GetAvailableNewUsers(c *fiber.Ctx, groupId, login string) ([]u
 	return users, nil
 }
 
-func (s *service) GetGroupsWithSubjectsByTeacher(c *fiber.Ctx, teacherId string) ([]subjectsModels.GroupsWithSubjects, error) {
-	groupsWithSubjectsRepo, err := s.groupsRepository.GetGroupsWithSubjectsByTeacher(c, teacherId)
+func (s *service) GetGroupsWithSubjectsByTeacher(ctx context.Context, teacherId string) ([]subjectsModels.GroupsWithSubjects, error) {
+	groupsWithSubjectsRepo, err := s.groupsRepository.GetGroupsWithSubjectsByTeacher(ctx, teacherId)
 	log.Printf("Groups with subjects: %#v", groupsWithSubjectsRepo)
 
 	if err != nil {
@@ -292,8 +292,8 @@ func (s *service) GetGroupsWithSubjectsByTeacher(c *fiber.Ctx, teacherId string)
 	return groupsWithSubjects, nil
 }
 
-func (s *service) GetGroupsBySubjectAndTeacher(c *fiber.Ctx, teacherId, subjectId string) ([]groupsModels.Group, error) {
-	groupsRepo, err := s.groupsRepository.GetGroupsBySubjectAndTeacher(c, teacherId, subjectId)
+func (s *service) GetGroupsBySubjectAndTeacher(ctx context.Context, teacherId, subjectId string) ([]groupsModels.Group, error) {
+	groupsRepo, err := s.groupsRepository.GetGroupsBySubjectAndTeacher(ctx, teacherId, subjectId)
 	if err != nil {
 		return nil, err
 	}

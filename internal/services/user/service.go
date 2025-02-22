@@ -1,14 +1,13 @@
 package users
 
 import (
+	"context"
 	"errors"
 	"log"
 	usersMapper "sad/internal/mappers/users"
 	errorsModels "sad/internal/models/errors"
 	usersModels "sad/internal/models/users"
 	"sad/internal/repositories"
-
-	"github.com/gofiber/fiber/v2"
 )
 
 type service struct {
@@ -21,13 +20,13 @@ func NewService(userRepository repositories.UserRepository) *service {
 	}
 }
 
-func (s *service) EditUser(c *fiber.Ctx, userId string, newRole usersModels.UserRole, newName string) error {
+func (s *service) EditUser(ctx context.Context, userId string, newRole usersModels.UserRole, newName string) error {
 	if len(newName) == 0 {
 		log.Printf("Error chagne user info: user's name should be no empty")
 		return errors.New("user's name should be no empty")
 	}
 
-	adminID, ok := c.Locals("userID").(string)
+	adminID, ok := ctx.Value("user_id").(string)
 	if !ok {
 		log.Println("Failed to assert type for userID from Locals")
 		return errorsModels.ErrServer
@@ -39,7 +38,7 @@ func (s *service) EditUser(c *fiber.Ctx, userId string, newRole usersModels.User
 		return errorsModels.ErrChangeOwnRole
 	}
 
-	exists, err := s.userRepository.CheckUserExists(c, userId)
+	exists, err := s.userRepository.CheckUserExists(ctx, userId)
 	if err != nil {
 		log.Printf("Error checking if user exists for userId: %s, error: %v", userId, err)
 		return err
@@ -49,7 +48,7 @@ func (s *service) EditUser(c *fiber.Ctx, userId string, newRole usersModels.User
 		return errorsModels.ErrUserNotFound
 	}
 
-	err = s.userRepository.ChangeUserInfo(c, userId, newRole, newName)
+	err = s.userRepository.ChangeUserInfo(ctx, userId, newRole, newName)
 
 	if err != nil {
 		log.Printf("Error changing user info: %v", err)
@@ -60,8 +59,8 @@ func (s *service) EditUser(c *fiber.Ctx, userId string, newRole usersModels.User
 	return err
 }
 
-func (s *service) CheckIsUserRoleAllowed(c *fiber.Ctx, allowedRoles []usersModels.UserRole, userId string) (bool, error) {
-	user, err := s.userRepository.GetById(c, userId)
+func (s *service) CheckIsUserRoleAllowed(ctx context.Context, allowedRoles []usersModels.UserRole, userId string) (bool, error) {
+	user, err := s.userRepository.GetById(ctx, userId)
 	if err != nil {
 		log.Printf("Error fetching user data: %v", err)
 		return false, err
@@ -76,8 +75,8 @@ func (s *service) CheckIsUserRoleAllowed(c *fiber.Ctx, allowedRoles []usersModel
 	return false, nil
 }
 
-func (s *service) GetUserInfo(c *fiber.Ctx, userId string) (*usersModels.UserInfo, error) {
-	userRepoInfo, err := s.userRepository.GetUserInfo(c, userId)
+func (s *service) GetUserInfo(ctx context.Context, userId string) (*usersModels.UserInfo, error) {
+	userRepoInfo, err := s.userRepository.GetUserInfo(ctx, userId)
 
 	if err != nil {
 		log.Printf("Error fetching user info: %v", err)
@@ -89,8 +88,8 @@ func (s *service) GetUserInfo(c *fiber.Ctx, userId string) (*usersModels.UserInf
 	return &user, nil
 }
 
-func (s *service) GetUsersInfo(c *fiber.Ctx) ([]usersModels.UserInfo, error) {
-	usersRepoInfo, err := s.userRepository.GetUsersInfo(c)
+func (s *service) GetUsersInfo(ctx context.Context) ([]usersModels.UserInfo, error) {
+	usersRepoInfo, err := s.userRepository.GetUsersInfo(ctx)
 
 	if err != nil {
 		log.Printf("Error fetching users info: %v", err)
@@ -102,8 +101,8 @@ func (s *service) GetUsersInfo(c *fiber.Ctx) ([]usersModels.UserInfo, error) {
 	return usersInfo, nil
 }
 
-func (s *service) DeleteUser(c *fiber.Ctx, userId string) error {
-	err := s.userRepository.DeleteUser(c, userId)
+func (s *service) DeleteUser(ctx context.Context, userId string) error {
+	err := s.userRepository.DeleteUser(ctx, userId)
 
 	if err != nil {
 		log.Printf("Error deleting user with id %s, err %v", userId, err)

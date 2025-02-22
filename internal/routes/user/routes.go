@@ -1,20 +1,27 @@
 package users
 
 import (
+	"net/http"
 	users "sad/internal/handlers/user"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/go-chi/chi/v5"
 )
 
-func Routes(r *fiber.App, handler users.UserHandler, authMiddleware interface{}, allowedRolesMiddleware interface{}) {
-	usersBaseApi := r.Group("/api/users").Use(authMiddleware)
-	usersBaseApi.Get("/list", handler.GetUsers)
-	usersBaseApi.Get("/info", handler.GetUserInfoByToken)
+func Routes(
+	r *chi.Mux, handler users.UserHandler,
+	authMiddleware func(http.Handler) http.Handler,
+	allowedRolesMiddleware func(http.Handler) http.Handler,
+) {
+	r.Group(func(r chi.Router) {
+		r.Use(authMiddleware)
+		r.Get("/users/info", handler.GetUserInfoByToken)
+		r.Get("/users/list", handler.GetUsers)
+		r.Get("/users/info/{user_id}", handler.GetUserInfo)
 
-	userApi := usersBaseApi.Group("/:user_id")
-	userApi.Get("/info", handler.GetUserInfo)
-
-	userAllowedRolesApi := userApi.Use(allowedRolesMiddleware)
-	userAllowedRolesApi.Patch("/edit", handler.EditUser)
-	userAllowedRolesApi.Delete("/", handler.DeleteUser)
+		r.Group(func(r chi.Router) {
+			r.Use(allowedRolesMiddleware)
+			r.Patch("/users/{user_id}/edit", handler.EditUser)
+			r.Delete("/users/{user_id}", handler.DeleteUser)
+		})
+	})
 }

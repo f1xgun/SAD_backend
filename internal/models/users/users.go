@@ -1,4 +1,4 @@
-package usersModels
+package users
 
 import "database/sql"
 
