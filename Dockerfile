@@ -28,7 +28,7 @@ WORKDIR /root/
 COPY --from=builder /go/bin/goose /usr/local/bin/goose
 
 # Копируем скомпилированное бинарное приложение из промежуточного образа
-COPY --from=builder /app/config.env ./config.env
+COPY --from=builder /app/.env ./.env
 COPY --from=builder /app/sad ./sad
 COPY ./internal/db/migrations/ ./migrations/
 COPY ./scripts/startup.sh scripts/wait-for-it.sh ./scripts/

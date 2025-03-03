@@ -95,11 +95,6 @@ type ValidationError struct {
 func (a *App) setupRouterChi() *chi.Mux {
 	router := chi.NewRouter()
 
-	router.Use(middleware.RequestID)
-	router.Use(logger.New(a.logger))
-	router.Use(middleware.Recoverer)
-	router.Use(middleware.URLFormat)
-
 	c := cors.New(cors.Options{
 		AllowedOrigins: a.config.AllowedOrigins,
 		Debug:          a.config.Environment == config.Local,
@@ -107,6 +102,11 @@ func (a *App) setupRouterChi() *chi.Mux {
 	})
 
 	router.Use(c.Handler)
+
+	router.Use(middleware.RequestID)
+	router.Use(logger.New(a.logger))
+	router.Use(middleware.Recoverer)
+	router.Use(middleware.URLFormat)
 
 	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -154,13 +154,13 @@ func setupApiRoutes(router *chi.Mux, serviceProvider *serviceProvider, config co
 	gradesHandler := serviceProvider.NewGradesHandler()
 
 	grades.Routes(apiRouter, gradesHandler, authMiddleware, teacherAndAdminMiddleware)
-	
+
 	groupsHandler := serviceProvider.NewGroupsHandler()
-	
+
 	groups.Routes(apiRouter, groupsHandler, authMiddleware, adminMiddleware)
-	
+
 	subjectsHandler := serviceProvider.NewSubjectsHandler()
-	
+
 	subjects.Routes(apiRouter, subjectsHandler, authMiddleware, adminMiddleware)
 
 	router.Mount("/api", apiRouter)

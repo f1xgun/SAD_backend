@@ -10,7 +10,7 @@ TARGET_PASSWORD="$POSTGRES_PASSWORD"
 ./scripts/wait-for-it.sh "$POSTGRES_HOST:$POSTGRES_PORT" -t 60 -- echo "Postgres доступен - выполнение команд"
 
 echo "Выполняем миграции по созданию базы данных '$POSTGRES_DB'..."
-psql -h "$POSTGRES_HOST" -U "$DEFAULT_DB" -c "
+psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -c "
 DO \$\$
 BEGIN
    IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = '$POSTGRES_DB') THEN
